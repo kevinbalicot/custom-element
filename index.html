@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+    <head>
+        <meta charset="utf-8">
+        <title></title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/2.2.0/webcomponents-bundle.js" charset="utf-8"></script>
+        <script src="src/dom.js" charset="utf-8"></script>
+        <script src="src/component.js" charset="utf-8"></script>
+    </head>
+    <body>
+        <template id="t">
+            <input type="text">
+            <h2>{{ message }}</h2>
+            <p>{{ i }}</p>
+            <button id="btn1">Click here</button>
+            <button id="btn2">MAGIC {{ display }}</button>
+            <button id="btn3">EXTEND THE TAAAABLEUUUH</button>
+            <div if="display">
+                PIOUF ! IT'S MAGIC <b>{{ display }}</b>
+                <div for="let a of tabs">ITEM {{ a }}</div>
+            </div>
+            <div for="let y of tabs"><p if="display">{{ y }}</p></div>
+        </template>
+
+        <my-component message="toto"></my-component>
+        <!--<my-component message="tata"></my-component>-->
+
+        <script type="text/javascript">
+            class MyComponent extends Component {
+                constructor() {
+                    super();
+
+                    this.setState({ message: 'Bonjour', i: 0, display: true, tabs: [1, 2, 3] });
+                }
+
+                onAfterViewInit() {
+                    this.get('button#btn1').on('click', () => this.setState({ i: ++this.state.i }));
+                    this.get('button#btn2').on('click', () => this.setState({ display: !this.state.display }));
+                    this.get('button#btn3').on('click', () => {
+                        this.state.tabs.push(this.state.i);
+                        this.setState({ tabs: this.state.tabs });
+                    });
+                    this.get('input').on('keyup', ({ target }) => this.setState({ message: target.value }));
+                }
+            }
+
+            component({
+                template: document.querySelector('#t'),
+                selector: 'my-component',
+                inputs: ['message']
+            })(MyComponent);
+
+            const el = document.querySelector('my-component');
+            //el.addEventListener('toto', () => console.log('lol'));
+            setTimeout(() => el.setAttribute('message', 'tata'), 2000);
+            setTimeout(() => el.setState('message', 'ok'), 4000);
+
+            //setTimeout(() => el.remove(), 3000);
+
+        </script>
+    </body>
+</html>
