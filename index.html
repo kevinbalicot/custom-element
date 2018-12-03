@@ -8,7 +8,7 @@
         <script src="src/component.js" charset="utf-8"></script>
     </head>
     <body>
-        <template id="t">
+        <!--<template id="t">
             <input type="text">
             <h2>{{ message }}</h2>
             <p>{{ i }}</p>
@@ -17,16 +17,70 @@
             <button id="btn3">EXTEND THE TAAAABLEUUUH</button>
             <div if="display">
                 PIOUF ! IT'S MAGIC <b>{{ display }}</b>
-                <div for="let a of tabs">ITEM {{ a }}</div>
             </div>
-            <div for="let y of tabs"><p if="display">{{ y }}</p></div>
-        </template>
+            <div for="let y of tabs" if="y != 0">{{ y }}</div>
+        </template>-->
 
-        <my-component message="toto"></my-component>
+        <!--<my-component message="toto"></my-component>-->
         <!--<my-component message="tata"></my-component>-->
 
+        <!--<title-component title="Tamia"></title-component>-->
+
+        <container-component></container-component>
+
+        <template id="container-template">
+            <p>{{ message }}</p>
+            <p if="message === 'toto'">AHAH</p>
+            <button>Click on me <3</button>
+
+            <a href="#/1">1</a>
+            <a href="#/2">2</a>
+            <a href="#/3">3</a>
+
+            <p route="/1">1</p>
+            <p route="/2">2</p>
+            <p route="/3">3</p>
+        </template>
+
+        <template id="title-template">
+            <h2>{{ title }}</h2>
+        </template>
+
         <script type="text/javascript">
-            class MyComponent extends Component {
+            class Title extends Component {
+                constructor() {
+                    super();
+
+                    this.setState({ title: 'Hello world' });
+                }
+            }
+
+            component({
+                template: document.querySelector('template#title-template'),
+                selector: 'title-component',
+                inputs: ['title']
+            })(Title);
+
+            class Container extends Component {
+                constructor() {
+                    super();
+
+                    this.state.set({ message: 'foo' });
+                }
+
+                onAfterViewInit() {
+                    this.get('button').on('click', () => {
+                        this.state.message = 'toto';
+                    });
+                }
+            }
+
+            component({
+                template: document.querySelector('template#container-template'),
+                selector: 'container-component'
+            })(Container);
+
+            /*class MyComponent extends Component {
                 constructor() {
                     super();
 
@@ -55,7 +109,7 @@
             setTimeout(() => el.setAttribute('message', 'tata'), 2000);
             setTimeout(() => el.setState('message', 'ok'), 4000);
 
-            //setTimeout(() => el.remove(), 3000);
+            //setTimeout(() => el.remove(), 3000);*/
 
         </script>
     </body>

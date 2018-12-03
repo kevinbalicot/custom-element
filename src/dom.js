@@ -1,10 +1,9 @@
 const EVALUATE_PATTERN = /\{\{([\s\S]+?)\}\}/;
 
 class TextNode {
-    constructor(element, parent, state) {
+    constructor(element, parent) {
         this.element = element;
         this.template = String(element.data);
-        this.state = state;
         this.bindings = {};
 
         const regexp = new RegExp(EVALUATE_PATTERN, 'g');
@@ -16,11 +15,11 @@ class TextNode {
         });
     }
 
-    get data() {
+    data(state) {
         let template = String(this.template);
         for (let property in this.bindings) {
-            if (undefined !== this.state[property.trim()]) {
-                template = template.replace(this.bindings[property], this.state[property.trim()]);
+            if (state && undefined !== state[property.trim()]) {
+                template = template.replace(this.bindings[property], state[property.trim()]);
             } else {
                 throw new Error(`Variable ${property.trim()} not found in "${this.bindings[property]}".`);
             }
@@ -31,67 +30,69 @@ class TextNode {
 }
 
 class Node {
-    constructor(element, parent, children = [], state = {}) {
+    constructor(element, parent, children = []) {
         this.element = element;
         this.textNodes = [];
         this.parent = parent;
         this.children = children;
-        this.state = state;
 
         for (let i = 0; i < this.element.childNodes.length; i++) {
             if (this.element.childNodes[i] instanceof Text) {
-                this.textNodes.push(new TextNode(this.element.childNodes[i], this.element, this.state));
+                this.textNodes.push(new TextNode(this.element.childNodes[i], this.element));
             }
         }
 
         this.bindings = [].concat(...this.textNodes.map(node => Object.keys(node.bindings)));
     }
 
-    update() {
-        this.textNodes.forEach(textNode => textNode.element.data = textNode.data);
+    update(freshState) {
+        this.textNodes.forEach(textNode => textNode.element.data = textNode.data(freshState));
     }
 
-    dispatch(event, data) {
-        if (this.bindings.some(b => data.indexOf(b) !== -1)) {
-            this.update();
+    dispatchEvent(event) {
+        if (this.bindings.some(b => event.detail.scope.indexOf(b) !== -1)) {
+            this.update(event.detail.state);
         }
+    }
+
+    get events() {
+        return ['onstatechange'];
     }
 }
 
 class IfNode extends Node {
-    constructor(element, parent, children = [], state = {}) {
-        super(element, parent, children, state);
+    constructor(element, parent, children = []) {
+        super(element, parent, children);
 
         this.if = this.element.getAttribute('if');
         this.mask = document.createTextNode('');
         this.hidden = false;
     }
 
-    update() {
-        const f = new Function(...(Object.keys(this.state).concat([`return ${this.if}`])));
-        const result = f(...(Object.values(this.state)));
+    update(freshState) {
+        const f = new Function(...(Object.keys(freshState).concat([`return ${this.if}`])));
+        const result = f(...(Object.values(freshState)));
         if (!result && !this.hidden) {
             this.parent.replaceChild(this.mask, this.element);
             this.hidden = true;
         } else if (result && this.hidden) {
             this.parent.replaceChild(this.element, this.mask);
             this.hidden = false;
-            super.update();
+            super.update(freshState);
         } else {
-            super.update();
+            super.update(freshState);
         }
     }
 
-    dispatch(event, data) {
-        this.update();
+    dispatchEvent(event) {
+        this.update(event.detail.state);
     }
 }
 
 class ForNode {
-    constructor(element, parent, state = {}) {
+    constructor(element, parent) {
         this.element = element;
         this.parent = parent;
-        this.state = state;
 
         this.for = this.element.getAttribute('for').match(/(?:var|let)\s+(\S+)\s+(?:in|of)\s+(\S+)/);
         this.mask = document.createTextNode('');
@@ -100,8 +101,12 @@ class ForNode {
         this.parent.replaceChild(this.mask, this.element);
     }
 
-    update() {
-        this.children.forEach(child => this.parent.removeChild(child.element));
+    update(freshState) {
+        this.children.forEach(child => {
+            if (Array.from(this.parent.children).indexOf(child.element) !== -1) {
+                this.parent.removeChild(child.element);
+            }
+        });
         this.children = [];
 
         const iteration = (element, elements) => {
@@ -114,44 +119,91 @@ class ForNode {
 
             state[this.for[1]] = elements[index];
 
-            const dom = buildDOM(elementClone, this.parent, Object.assign(state, this.state));
-            updateDOM(dom);
+            const dom = new VirtualDOM(elementClone, this.parent);
+            dom.update(Object.assign(state, freshState));
 
             this.children.push(dom);
         };
 
-        const f = new Function(...Object.keys(this.state).concat(['iteration', `for (${this.for[0]}) { iteration(${this.for[1]}, ${this.for[2]}); }`]));
-        f(...Object.values(this.state).concat([iteration]));
+        const f = new Function(...Object.keys(freshState).concat(['iteration', `for (${this.for[0]}) { iteration(${this.for[1]}, ${this.for[2]}); }`]));
+        f(...Object.values(freshState).concat([iteration]));
     }
 
-    dispatch(event, data) {
-        this.update();
+    dispatchEvent(event) {
+        this.update(event.detail.state);
+    }
+
+    get events() {
+        return ['onstatechange'];
     }
 }
 
-const buildDOM = (element, parent, state = {}) => {
-    const children = [];
-    for (let i = 0; i < element.children.length; i++) {
-        children.push(buildDOM(element.children[i], element, state));
+class RouteNode extends IfNode {
+    constructor(element, parent, children = []) {
+        super(element, parent, children);
+
+        this.if = 'false';
     }
 
-    if (element.hasAttribute('for')) {
-        return new ForNode(element, parent, state);
+    update(freshState) {
+        this.if = `window.location.hash.replace('#', '').match(/${this.element.getAttribute('route').replace('/', '\\/')}/)`;
+        super.update(freshState);
     }
 
-    if (element.hasAttribute('if')) {
-        return new IfNode(element, parent, children, state);
+    dispatchEvent(event) {
+        this.update(event.detail.state);
     }
 
-    return new Node(element, parent, children, state);
-};
+    get events() {
+        return ['onhashchange'];
+    }
+}
 
-const updateDOM = (node) => {
-    node.update();
-    node.children.forEach(n => updateDOM(n));
-};
+class VirtualDOM {
+    constructor(element, parent, state = {}) {
+        this.listeners = [];
+        this.state = {};
+        this.root = this.create(element, parent);
+    }
 
-const dispatch = (node, event, data) => {
-    node.dispatch(event, data);
-    node.children.forEach(n => dispatch(n, event, data));
-};
+    create(element, parent) {
+        let node = null;
+        if (element !== parent && element instanceof Component) {
+            return { children: [], update: () => {} };
+        }
+
+        const children = [];
+        for (let i = 0; i < element.children.length; i++) {
+            children.push(this.create(element.children[i], element));
+        }
+
+        if (element.hasAttribute('for')) {
+            node = new ForNode(element, parent);
+        }
+
+        if (element.hasAttribute('if')) {
+            node = new IfNode(element, parent, children);
+        }
+
+        if (element.hasAttribute('route')) {
+            node = new RouteNode(element, parent, children);
+        }
+
+        if (null === node) {
+            node = new Node(element, parent, children);
+        }
+
+        node.events.forEach(eventName => this.addEventListener(eventName, event => node.dispatchEvent(event)));
+
+        return node;
+    }
+
+    addEventListener(eventName, callback) {
+        this.listeners.push({ eventName, callback });
+    }
+
+    dispatchEvent(event) {
+        this.listeners.filter(listener => listener.eventName === event.type)
+            .forEach(listener => listener.callback(event));
+    }
+}

@@ -34,22 +34,44 @@ class Component extends HTMLElement {
         const template = document.createElement('template');
         template.innerHTML = '<style></style><slot></slot>';
 
-        this._state = {};
         this._dom = null;
+
+        this.state = new Proxy({
+            set: function(state) {
+                if (typeof state != 'object') {
+                    throw new Error('State has to be an object.');
+                }
+
+                for (let property in state) {
+                    this[property] = state[property];
+                }
+            }
+        }, {
+            set: (target, property, value) => {
+                target[property] = value;
+
+                if (null !== this._dom) {
+                    this._dom.dispatchEvent(new CustomEvent('onstatechange', { detail: { scope: [property], state: this.state } }));
+                    this.onAfterViewChanges();
+                }
+
+                return true;
+            }
+        });
 
         this.attachShadow({ mode: 'open' });
         this.shadowRoot.appendChild(template.content.cloneNode(true));
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
-        this._state[name] = newValue;
+        this.state[name] = newValue;
 
         console.log('changes', name, oldValue, newValue);
 
         this.onChanges(name, oldValue, newValue);
 
         if (this._dom) {
-            dispatch(this._dom, 'DOMStateChange', [name]);
+            this._dom.dispatchEvent(new CustomEvent('onstatechange', { detail: { scope: [name], state: this.state } }));
             this.onAfterViewChanges();
         }
     }
@@ -57,13 +79,18 @@ class Component extends HTMLElement {
     connectedCallback() {
         console.log('connected');
 
-        this._dom = buildDOM(this.shadowRoot.host, this.shadowRoot.host, this._state);
+        this._dom = new VirtualDOM(this.shadowRoot.host, this.shadowRoot.host, this.state);
 
         this.onConnected();
 
-        updateDOM(this._dom);
+        this._dom.dispatchEvent(new CustomEvent('onstatechange', { detail: { scope: Object.keys(this.state), state: this.state } }));
+        this._dom.dispatchEvent(new CustomEvent('onhashchange', { detail: { scope: Object.keys(this.state), state: this.state } }));
 
         this.onAfterViewInit();
+
+        window.addEventListener("hashchange", () => {
+            this._dom.dispatchEvent(new CustomEvent('onhashchange', { detail: { scope: Object.keys(this.state), state: this.state } }));
+        });
     }
 
     disconnectedCallback() {
@@ -84,24 +111,6 @@ class Component extends HTMLElement {
 
     onAfterViewChanges() {}
 
-    setState(keys, value, updateDOM = true) {
-        let scopes = [];
-        if (typeof keys === 'object') {
-            for (let prop in keys) {
-                this.setState(prop, keys[prop], false);
-                scopes.push(prop);
-            }
-        } else {
-            this._state[keys] = value;
-            scopes.push(keys);
-        }
-
-        if (this._dom && updateDOM) {
-            dispatch(this._dom, 'DOMStateChange', scopes);
-            this.onAfterViewChanges();
-        }
-    }
-
     get(selector) {
         const element = this.querySelector(selector);
 
@@ -114,15 +123,5 @@ class Component extends HTMLElement {
 
     on(event, callback, bool = false) {
         this.addEventListener(event, callback, bool);
-    }
-
-    set state(state) {
-        if (!this._state) {
-            this._state = state;
-        }
-    }
-
-    get state() {
-        return this._state;
     }
 }
