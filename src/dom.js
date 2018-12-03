@@ -33,6 +33,7 @@ class Node {
     constructor(element, parent, children = []) {
         this.element = element;
         this.textNodes = [];
+        this.customAttributes = [];
         this.parent = parent;
         this.children = children;
 
@@ -43,10 +44,23 @@ class Node {
         }
 
         this.bindings = [].concat(...this.textNodes.map(node => Object.keys(node.bindings)));
+
+        for (let i = 0; i < this.element.attributes.length; i++) {
+            if (this.element.attributes[i].name.match(/\[(\S)+\]/g)) {
+                this.customAttributes.push(this.element.attributes[i]);
+
+                if (-1 === this.bindings.indexOf(this.element.attributes[i].value)) {
+                    this.bindings.push(this.element.attributes[i].value);
+                }
+            }
+        }
     }
 
     update(freshState) {
         this.textNodes.forEach(textNode => textNode.element.data = textNode.data(freshState));
+        this.customAttributes.forEach(attribute => {
+            this.element.setAttribute(attribute.name.replace('[', '').replace(']', ''), freshState[attribute.value]);
+        });
     }
 
     dispatchEvent(event) {
@@ -168,13 +182,11 @@ class VirtualDOM {
 
     create(element, parent) {
         let node = null;
-        if (element !== parent && element instanceof Component) {
-            return { children: [], update: () => {} };
-        }
-
         const children = [];
-        for (let i = 0; i < element.children.length; i++) {
-            children.push(this.create(element.children[i], element));
+        if (element === parent || !(element instanceof Component)) {
+            for (let i = 0; i < element.children.length; i++) {
+                children.push(this.create(element.children[i], element));
+            }
         }
 
         if (element.hasAttribute('for')) {

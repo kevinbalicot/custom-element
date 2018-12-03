@@ -40,6 +40,10 @@
             <p route="/1">1</p>
             <p route="/2">2</p>
             <p route="/3">3</p>
+
+            <div if="message === 'toto'">
+                <title-component [title]="message"></title-component>
+            </div>
         </template>
 
         <template id="title-template">
@@ -51,7 +55,7 @@
                 constructor() {
                     super();
 
-                    this.setState({ title: 'Hello world' });
+                    this.state.set({ title: 'Hello world' });
                 }
             }
 
