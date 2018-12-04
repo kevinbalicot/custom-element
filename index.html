@@ -3,47 +3,31 @@
     <head>
         <meta charset="utf-8">
         <title></title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/7.0.0/polyfill.min.js" charset="utf-8"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/2.2.0/webcomponents-bundle.js" charset="utf-8"></script>
-        <script src="src/dom.js" charset="utf-8"></script>
-        <script src="src/component.js" charset="utf-8"></script>
+        <script src="src/index.js" charset="utf-8"></script>
     </head>
     <body>
-        <!--<template id="t">
-            <input type="text">
-            <h2>{{ message }}</h2>
-            <p>{{ i }}</p>
-            <button id="btn1">Click here</button>
-            <button id="btn2">MAGIC {{ display }}</button>
-            <button id="btn3">EXTEND THE TAAAABLEUUUH</button>
-            <div if="display">
-                PIOUF ! IT'S MAGIC <b>{{ display }}</b>
-            </div>
-            <div for="let y of tabs" if="y != 0">{{ y }}</div>
-        </template>-->
-
-        <!--<my-component message="toto"></my-component>-->
-        <!--<my-component message="tata"></my-component>-->
-
-        <!--<title-component title="Tamia"></title-component>-->
-
         <container-component></container-component>
 
         <template id="container-template">
-            <p>{{ message }}</p>
-            <p if="message === 'toto'">AHAH</p>
-            <button>Click on me <3</button>
-
-            <a href="#/1">1</a>
-            <a href="#/2">2</a>
-            <a href="#/3">3</a>
-
-            <p route="/1">1</p>
-            <p route="/2">2</p>
-            <p route="/3">3</p>
-
-            <div if="message === 'toto'">
-                <title-component [title]="message"></title-component>
+            <button id="a">Click</button>
+            <button id="b">Click color</button>
+            <button id="c">Click hidden</button>
+            <button id="d">Click Add</button>
+            <div if="display">
+                <p [innerHTML]="message+'toto'" [class.toto]="false"></p>
+                <p [style.color]="color" [innerHTML]="message"></p>
+                <b for="let i of tabs" [innerHTML]="i"></b>
             </div>
+
+            <a href="/#/1">1</a>
+            <a href="/#/2">2</a>
+            <a href="/#/3">3</a>
+
+            <p route="/1">A</p>
+            <p route="/2">B</p>
+            <p route="/3">C</p>
         </template>
 
         <template id="title-template">
@@ -51,30 +35,37 @@
         </template>
 
         <script type="text/javascript">
-            class Title extends Component {
+            class Service {
                 constructor() {
-                    super();
-
-                    this.state.set({ title: 'Hello world' });
+                    console.log('toto');
                 }
             }
 
-            component({
-                template: document.querySelector('template#title-template'),
-                selector: 'title-component',
-                inputs: ['title']
-            })(Title);
+            service({})(Service)
 
-            class Container extends Component {
+            class Container extends HTMLElement {
                 constructor() {
                     super();
 
-                    this.state.set({ message: 'foo' });
+                    this.state.set({ display: true, message: 'foo', color: 'red', tabs: [1,2,3] });
                 }
 
                 onAfterViewInit() {
-                    this.get('button').on('click', () => {
+                    this.get('button#a').on('click', () => {
                         this.state.message = 'toto';
+                    });
+
+                    this.get('button#b').on('click', () => {
+                        this.state.color = 'green';
+                    });
+
+                    this.get('button#c').on('click', () => {
+                        this.state.display = !this.state.display;
+                    });
+
+                    this.get('button#d').on('click', () => {
+                        this.state.tabs.push(Math.round(Math.random()*5));
+                        this.state.tabs = this.state.tabs;
                     });
                 }
             }
@@ -83,38 +74,6 @@
                 template: document.querySelector('template#container-template'),
                 selector: 'container-component'
             })(Container);
-
-            /*class MyComponent extends Component {
-                constructor() {
-                    super();
-
-                    this.setState({ message: 'Bonjour', i: 0, display: true, tabs: [1, 2, 3] });
-                }
-
-                onAfterViewInit() {
-                    this.get('button#btn1').on('click', () => this.setState({ i: ++this.state.i }));
-                    this.get('button#btn2').on('click', () => this.setState({ display: !this.state.display }));
-                    this.get('button#btn3').on('click', () => {
-                        this.state.tabs.push(this.state.i);
-                        this.setState({ tabs: this.state.tabs });
-                    });
-                    this.get('input').on('keyup', ({ target }) => this.setState({ message: target.value }));
-                }
-            }
-
-            component({
-                template: document.querySelector('#t'),
-                selector: 'my-component',
-                inputs: ['message']
-            })(MyComponent);
-
-            const el = document.querySelector('my-component');
-            //el.addEventListener('toto', () => console.log('lol'));
-            setTimeout(() => el.setAttribute('message', 'tata'), 2000);
-            setTimeout(() => el.setState('message', 'ok'), 4000);
-
-            //setTimeout(() => el.remove(), 3000);*/
-
         </script>
     </body>
 </html>
