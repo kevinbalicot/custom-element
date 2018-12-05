@@ -1,212 +1,54 @@
-/**
-Decorators
-*/
-
-function component(config) {
-    return function decorator(target) {
-        if (config.inputs && Array.isArray(config.inputs)) {
-            target.observedAttributes = config.inputs;
-        }
-
-        if (config.template) {
-            target.template = config.template;
-        }
-
-        target.style = '';
-        if (config.style) {
-            target.style = config.style;
-        }
-
-        if (!config.selector) {
-            throw new Error('Component need selector name.');
-        }
-
-        target.prototype.element = null;
-        target.prototype.di = di;
-        target.prototype.state = {
-            set: function(state) {
-                if (typeof state != 'object') {
-                    throw new Error('State has to be an object.');
-                }
-
-                for (var property in state) {
-                    this[property] = state[property];
-                }
-            }
-        };
-
-        target.prototype.connectedCallback = function () {
-            this.state = new Proxy(this.state, {
-                set: (target, property, value) => {
-                    target[property] = value;
-
-                    if (null !== this.element) {
-                        this.element.dispatchEvent(new CustomEvent('onstatechange', { detail: { scope: [property], state: this.state } }));
-                        if (this.onAfterViewChanges) {
-                            this.onAfterViewChanges();
-                        }
-                    }
-
-                    return true;
-                }
-            });
-
-            if (this.constructor.template && this.constructor.template instanceof HTMLElement) {
-                this.innerHTML = String(this.constructor.template.innerHTML);
-            } else if (typeof this.constructor.template === 'string') {
-                this.innerHTML = this.constructor.template;
-            }
-
-            var template = document.createElement('template');
-            template.innerHTML = '<style>' + this.constructor.style + '</style><slot></slot>';
-
-            this.attachShadow({ mode: 'open' });
-            this.shadowRoot.appendChild(template.content.cloneNode(true));
-            this.element = Document.createElement(this.shadowRoot.host, this.shadowRoot.host);
-
-            if (this.onConnected) {
-                this.onConnected();
-            }
-
-            this.element.dispatchEvent(new CustomEvent('onstatechange', { bubbles: true, detail: { scope: Object.keys(this.state), state: this.state } }));
-            //this.element.dispatchEvent(new CustomEvent('onhashchange', { detail: { scope: Object.keys(this.state), state: this.state } }));
-
-            if (this.onAfterViewInit) {
-                this.onAfterViewInit();
-            }
-
-            var self = this;
-            window.addEventListener("hashchange", function() {
-                self.element.dispatchEvent(new CustomEvent('onhashchange', { detail: { scope: Object.keys(self.state), state: self.state } }));
-            });
-        };
-
-        target.prototype.attributeChangedCallback = function(name, oldValue, newValue) {
-            this.state[name] = newValue;
-
-            if (this.onChanges) {
-                this.onChanges(name, oldValue, newValue);
-            }
-
-            if (this.element) {
-                this.element.dispatchEvent(new CustomEvent('onstatechange', { detail: { scope: [name], state: this.state } }));
-                if (this.onAfterViewChanges) {
-                    this.onAfterViewChanges();
-                }
-            }
-        };
-
-        target.prototype.disconnectedCallback = function () {
-            if (this.onDisconnected) {
-                this.onDisconnected();
-            }
-        };
-
-        target.prototype.get = function(selector) {
-            var element = this.querySelector(selector);
-
-            if (element && !element.on) {
-                element.on = function(event, callback, options = false) {
-                    element.addEventListener(event, callback, options);
-                };
-            }
-
-            return element;
-        }
-
-        target.prototype.on = function(event, callback, options = false) {
-            this.addEventListener(event, callback, options);
-        }
-
-        window.customElements.define(config.selector, target);
-
-        return target;
-    }
-};
-
-function service(config) {
-    return function decorator(target) {
-        var injects = [];
-        if (config.injects) {
-            injects = config.injects;
-        }
-
-        di.add(target.name, target, injects.map(service => service.name));
-
-        return target;
-    }
-};
-
-/**
-Utils
-*/
-
-function parseExpression(expression, state) {
-    var f = new Function(...(Object.keys(state).concat([expression])));
-    return f(...(Object.values(state)));
-};
-
-function applyCustomAttribute(element, attributeNames, value) {
-    switch (attributeNames[0]) {
-        case 'innerhtml':
-            return element.innerHTML = value;
-        case 'style':
-            return element.style[attributeNames[1]] = value;
-        case 'class':
-            return value ? element.classList.add(attributeNames[1]) : null;
-    }
-};
-
-function isDirty(attributeValues, scope) {
-    var clean = [];
-    attributeValues.forEach(values => {
-        clean = clean.concat(values.replace('+', ' ').replace('-', ' ').match(/(\S+)/g));
-    });
-
-    return clean.some(c => scope.indexOf(c) !== -1);
-};
-
-/**
-Classes
-*/
-
-function DI() {
-    this.items = {};
-}
-
-DI.prototype.get = function(key) {
-    if (typeof key === 'function') {
-        key = key.name;
-    } else if (typeof key === 'object') {
-        key = key.constructor.name;
+class Container {
+	constructor() {
+    	this._items = {};
     }
 
-    if (!this.items[key]) {
-        return null;
-    }
+    get(key) {
+    	if (typeof key === 'function') {
+            key = key.name;
+        } else if (typeof key === 'object') {
+            key = key.constructor.name;
+        }
 
-    var service = this.items[key];
+        if (!this._items[key]) {
+            return null;
+        }
 
-    if (service.instance) {
+        var service = this._items[key];
+
+        if (service.instance) {
+            return service.instance;
+        }
+
+        this._items[key].instance = new service.object(...service.parameters.map(p => this.get(p)));
+
         return service.instance;
     }
 
-    this.items[key].instance = new service.object(...service.parameters.map(p => this.get(p)));
+    has(key) {
+    	if (typeof key === 'function') {
+            key = key.name;
+        } else if (typeof key === 'object') {
+            key = key.constructor.name;
+        }
 
-    return service.instance;
-};
-
-DI.prototype.has = function(key) {
-    return !!this.items[key];
-};
-
-DI.prototype.add = function(key, value, parameters = []) {
-    if (!this.has(key)) {
-        this.items[key] = { object: value, parameters };
+        return !!this._items[key];
     }
-};
 
-var di = new DI();
+    add(key, value, parameters) {
+    	if (typeof key === 'function') {
+            key = key.name;
+        } else if (typeof key === 'object') {
+            key = key.constructor.name;
+        }
+
+    	if (!this.has(key)) {
+        	this._items[key] = { object: value, parameters };
+    	}
+    }
+}
+
+const container = new Container();
 
 class Node {
     constructor(element, parent, children) {
@@ -215,40 +57,46 @@ class Node {
         this.children = children;
 
         this.customAttributes = [];
-        this.customAttributeValues = [];
+        //this.customAttributeValues = [];
 
-        for (var i = 0; i < this.element.attributes.length; i++) {
+        for (let i = 0; i < this.element.attributes.length; i++) {
             if (this.element.attributes[i].name.match(/\[(\S)+\]/g)) {
                 this.customAttributes.push(this.element.attributes[i]);
-                this.customAttributeValues.push(this.element.attributes[i].value);
-                this.element.removeAttribute(this.element.attributes[i]);
+                //this.customAttributeValues.push(this.element.attributes[i].value);
             }
         }
     }
 
-    handle(scope, state) {
-        if (scope && !isDirty(this.customAttributeValues, scope)) {
-            return;
-        }
-
-        var name;
-        this.customAttributes.forEach(attribute => {
-            var levels = attribute.name.replace('[', '').replace(']', '').split('.');
-            var value = parseExpression('return ' + attribute.value, state);
-            applyCustomAttribute(this.element, levels, value);
-        });
-    }
-
     dispatchEvent(event) {
-        this.children.forEach(node => node.dispatchEvent(event));
+        let name;
+        this.customAttributes.forEach(attribute => {
+            const levels = attribute.name.replace('[', '').replace(']', '').split('.');
+            const value = this.parseExpression('return ' + attribute.value, event.detail);
+            this.applyCustomAttribute(this.element, levels, value);
+        });
 
-        if (-1 != this.attachedEvents.indexOf(event.type)) {
-            this.handle(event.detail.scope, event.detail.state);
-        }
+        this.children.forEach(node => node.dispatchEvent(event));
     }
 
-    get attachedEvents() {
-        return ['onhashchange', 'onstatechange'];
+    parseExpression(expression, scope = {}) {
+        const f = new Function(...(Object.keys(scope).concat([expression])));
+        return f(...(Object.values(scope)));
+    }
+
+    applyCustomAttribute(element, attributeNames, value) {
+        switch (attributeNames[0]) {
+            case 'innerhtml':
+                element.innerHTML = value;
+                break;
+            case 'style':
+                element.style[attributeNames[1]] = value;
+                break;
+            case 'class':
+                value ? element.classList.add(attributeNames[1]) : element.classList.remove(attributeNames[1]);
+                break;
+            default:
+                element[attributeNames[0]] = value;
+        }
     }
 }
 
@@ -262,7 +110,7 @@ class IfNode extends Node {
     }
 
     dispatchEvent(event) {
-        var result = parseExpression('return ' + this.if, event.detail.state);
+        var result = this.parseExpression('return ' + this.if, event.detail);
 
         if (!result && !this.hidden) {
             this.parent.replaceChild(this.mask, this.element);
@@ -271,7 +119,7 @@ class IfNode extends Node {
             this.parent.replaceChild(this.element, this.mask);
             this.hidden = false;
             super.dispatchEvent(event);
-        } else {
+        } else if (!this.hidden) {
             super.dispatchEvent(event);
         }
     }
@@ -298,51 +146,41 @@ class ForNode extends Node {
         this.children = [];
 
         var self = this;
+
         function iteration(el, els) {
-            var index = els.indexOf(el);
-            var state = {};
-            var elementClone = self.element.cloneNode(true);
+            const index = els.indexOf(el);
+            const scope = {};
+            const elementClone = self.element.cloneNode(true);
             elementClone.removeAttribute('for');
 
             self.parent.insertBefore(elementClone, self.mask);
 
-            state[self.for[1]] = els[index];
-            state['$index'] = index;
+            scope[self.for[1]] = els[index];
+            scope['$index'] = index;
 
             var node = Document.createElement(elementClone, self.parent);
-            node.dispatchEvent(new CustomEvent(event.type, { detail: { state }}));
+            node.dispatchEvent(new CustomEvent(event.type, {
+                detail: scope
+            }));
 
             self.children.push(node);
-        };
+        }
 
-        parseExpression(
-            'for (' + this.for[0] + ') { iteration(' + this.for[1] + ', ' + this.for[2]+ '); }',
-            Object.assign({}, event.detail.state, { iteration })
+        this.parseExpression(
+            'for (' + this.for[0] + ') { iteration(' + this.for[1] + ', ' + this.for[2] + '); }',
+            Object.assign({}, event.detail, { iteration })
         );
     }
 }
 
-class RouteNode extends IfNode {
-    constructor(element, parent, children = []) {
-        super(element, parent, children);
-
-        this.if = 'false';
-    }
-
-    dispatchEvent(event) {
-        this.if = 'window.location.hash.replace("#", "").match(/^' + this.element.getAttribute('route').replace('/', '\\/') + '$/)';
-        super.dispatchEvent(event);
-    }
-}
-
-var Document = {
-    createElement: function(element, parent) {
-        var children = [];
-        for (var i = 0; i < element.children.length; i++) {
+class Document {
+    static createElement(element, parent) {
+        const children = [];
+        for (let i = 0; i < element.children.length; i++) {
             children.push(Document.createElement(element.children[i], element));
         }
 
-        if (element.hasAttribute('for')) {
+        if (element.hasAttribute('for') && element.tagName !== 'LABEL') {
             return new ForNode(element, parent, children);
         }
 
@@ -350,10 +188,170 @@ var Document = {
             return new IfNode(element, parent, children);
         }
 
-        if (element.hasAttribute('route')) {
-            return new RouteNode(element, parent, children);
-        }
-
         return new Node(element, parent, children);
     }
 }
+
+class CustomElementProperty {
+    constructor(name, callback) {
+    	this.name = name;
+        this._value = undefined;
+        this._oldValue = undefined;
+        this.callback = callback;
+    }
+
+    push(item) {
+    	if (Array.isArray(this.value)) {
+        	this._oldValue = this._cloneValue(this._value);
+        	this._value.push(item);
+            this.callback(this._oldValue, this._value);
+        }
+    }
+
+    set value(value) {
+        this._oldValue = this._cloneValue(this._value);
+        this._value = value;
+
+        this.callback(this._oldValue, this._value);
+    }
+
+    get value() {
+        return this._value;
+    }
+
+    _cloneValue() {
+		if (Array.isArray(this.value)) {
+        	return [].concat(this.value);
+        } else if (typeof this.value === 'object') {
+        	return Object.assign({}, this.value);
+        }
+
+        return this.value;
+    }
+
+    get scope() {
+    	const data = {};
+
+        data[this.name] = this.value;
+
+        return data;
+    }
+}
+
+class Injectable {
+    static get injects() {
+    	return [];
+    }
+}
+
+class CustomElement extends HTMLElement {
+    constructor() {
+        super();
+
+        this.constructor.properties.forEach(property => {
+            this[property] = new CustomElementProperty(property, (oldValue, newValue) => this.requestUpdate(oldValue, newValue));
+        });
+
+        this._container = container;
+        this.constructor.injects.forEach(inject => {
+        	this._container.add(inject, inject, inject.injects || []);
+        });
+
+        this.innerHTML = this.constructor.template;
+        this.elementRef = null;
+    }
+
+    connectedCallback() {
+        const template = document.createElement('template');
+        template.innerHTML = '<style></style><slot></slot>';
+
+        this.attachShadow({ mode: 'open' });
+        this.shadowRoot.appendChild(template.content.cloneNode(true));
+
+        this.elementRef = Document.createElement(this.shadowRoot.host, this.shadowRoot.host);
+        this.update();
+
+        if (this.onConnected) {
+            this.onConnected();
+        }
+    }
+
+    requestUpdate(oldValue, newValue) {
+        if (oldValue !== newValue) {
+        	this.update();
+        }
+    }
+
+    update() {
+    	if (null !== this.elementRef) {
+        	this.elementRef.dispatchEvent(new CustomEvent('changes', { detail: this.scope }));
+        }
+    }
+
+    get(key) {
+        return this._container.get(key);
+    }
+
+    has(key) {
+        return this._container.has(key);
+    }
+
+    on(event, callback, options = false) {
+        this.elementRef.element.addEventListener(event, callback, options);
+    }
+
+    element(selector) {
+        const el = this.elementRef.element.querySelector(selector);
+
+        if (el && !el.on) {
+            el.on = (event, callback, options = false) => el.addEventListener(event, callback, options);
+        }
+
+        return el;
+    }
+
+    get scope() {
+    	return Object.assign({}, ...(this.constructor.properties.map(property => this[property].scope)));
+    }
+
+    static get properties() {
+        return [];
+    }
+
+    static get injects() {
+    	return [];
+    }
+
+    static get observedAttributes() {
+        return [];
+    }
+
+    static get template() {
+        return null;
+    }
+}
+
+function router(routes) {
+    if (!Array.isArray(routes)) {
+        routes = [routes];
+    }
+
+    if (!window.location.hash) {
+        window.location.hash = '#/';
+    }
+
+    function matchRoute() {
+        routes.forEach(route => {
+            if (window.location.hash.replace("#", "").match(new RegExp(`^${route.path}$`))) {
+                route.container.innerHTML = null;
+                route.container.appendChild(document.createElement(route.component));
+            }
+        });
+    };
+
+    window.addEventListener("hashchange", function() {
+        matchRoute();
+    });
+
+    matchRoute();
+};
