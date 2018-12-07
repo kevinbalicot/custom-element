@@ -103,6 +103,10 @@ class Node {
                 element[attributeNames[0]] = value;
         }
     }
+
+	clone() {
+		return Document.cloneNode(this, this.element.cloneNode(true), this.parent, this.customAttributes);
+	}
 }
 
 class IfNode extends Node {
@@ -136,6 +140,8 @@ class ForNode extends Node {
 
         this.for = this.element.getAttribute('for').match(/(?:var|let)\s+(\S+)\s+(?:in|of)\s+(\S+)/);
         this.mask = document.createTextNode('');
+		this.clone = this.clone();
+		this.clone.element.removeAttribute('for');
         this.children = [];
 
         this.parent.replaceChild(this.mask, this.element);
@@ -153,22 +159,17 @@ class ForNode extends Node {
         const self = this;
         function iteration(el, els) {
             const index = els.indexOf(el);
+			const clone = self.clone.clone();
             const scope = {};
-            const elementClone = self.element.cloneNode(true);
-            elementClone.removeAttribute('for');
 
-            self.parent.insertBefore(elementClone, self.mask);
-
-            scope[self.for[1]] = els[index];
+			scope[self.for[1]] = els[index];
             scope['$index'] = index;
 
-            var node = Document.createElement(elementClone, self.parent);
-            node.customAttributes = self.customAttributes;
-            node.dispatchEvent(new CustomEvent(event.type, {
-                detail: scope
-            }));
+            self.parent.insertBefore(clone.element, self.mask);
 
-            self.children.push(node);
+            clone.dispatchEvent(new CustomEvent(event.type, { detail: scope }));
+
+            self.children.push(clone);
         }
 
         this.parseExpression(
@@ -197,6 +198,20 @@ class Document {
 
         return new Node(element, parent, children);
     }
+
+	static cloneNode(node, element, parent, customAttributes = []) {
+		const clone = new Node(element, parent);
+		clone.customAttributes = customAttributes;
+
+		const children = [];
+		node.children.forEach((n, i) => {
+			children.push(Document.cloneNode(n, clone.element.children[i], clone.element, n.customAttributes));
+		});
+
+		clone.children = children;
+
+		return clone;
+	}
 }
 
 class CustomElementProperty {
