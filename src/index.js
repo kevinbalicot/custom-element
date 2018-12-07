@@ -57,13 +57,14 @@ class Node {
         this.children = children;
 
         this.customAttributes = [];
-        //this.customAttributeValues = [];
-
-        for (let i = 0; i < this.element.attributes.length; i++) {
-            if (this.element.attributes[i].name.match(/\[(\S)+\]/g)) {
-                this.customAttributes.push(this.element.attributes[i]);
-                //this.customAttributeValues.push(this.element.attributes[i].value);
+        if (this.element.attributes) {
+            for (let i = 0; i < this.element.attributes.length; i++) {
+                if (this.element.attributes[i].name.match(/\[(\S)+\]/g)) {
+                    this.customAttributes.push(this.element.attributes[i]);
+                }
             }
+
+            this.customAttributes.forEach(attribute => this.element.removeAttribute(attribute.name));
         }
     }
 
@@ -93,6 +94,10 @@ class Node {
                 break;
             case 'class':
                 value ? element.classList.add(attributeNames[1]) : element.classList.remove(attributeNames[1]);
+                break;
+            case 'attribute':
+            case 'attr':
+                element.setAttribute(attributeNames[1], value);
                 break;
             default:
                 element[attributeNames[0]] = value;
@@ -145,8 +150,7 @@ class ForNode extends Node {
 
         this.children = [];
 
-        var self = this;
-
+        const self = this;
         function iteration(el, els) {
             const index = els.indexOf(el);
             const scope = {};
@@ -159,6 +163,7 @@ class ForNode extends Node {
             scope['$index'] = index;
 
             var node = Document.createElement(elementClone, self.parent);
+            node.customAttributes = self.customAttributes;
             node.dispatchEvent(new CustomEvent(event.type, {
                 detail: scope
             }));
@@ -177,14 +182,16 @@ class Document {
     static createElement(element, parent) {
         const children = [];
         for (let i = 0; i < element.children.length; i++) {
-            children.push(Document.createElement(element.children[i], element));
+        	if (element.children[i].hasAttribute) {
+            	children.push(Document.createElement(element.children[i], element));
+            }
         }
 
-        if (element.hasAttribute('for') && element.tagName !== 'LABEL') {
+        if (element.hasAttribute && element.hasAttribute('for') && element.tagName !== 'LABEL') {
             return new ForNode(element, parent, children);
         }
 
-        if (element.hasAttribute('if')) {
+        if (element.hasAttribute && element.hasAttribute('if')) {
             return new IfNode(element, parent, children);
         }
 
@@ -252,29 +259,60 @@ class CustomElement extends HTMLElement {
             this[property] = new CustomElementProperty(property, (oldValue, newValue) => this.requestUpdate(oldValue, newValue));
         });
 
+		this._init = false;
         this._container = container;
         this.constructor.injects.forEach(inject => {
         	this._container.add(inject, inject, inject.injects || []);
         });
 
-        this.innerHTML = this.constructor.template;
         this.elementRef = null;
     }
 
     connectedCallback() {
-        const template = document.createElement('template');
-        template.innerHTML = '<style></style><slot></slot>';
+		if (!this._init) {
+			const styles = !Array.isArray(this.constructor.styles) ? [this.constructor.styles] : this.constructor.styles;
+            const style = styles.join("\n");
+			const template = document.createElement('template');
 
-        this.attachShadow({ mode: 'open' });
-        this.shadowRoot.appendChild(template.content.cloneNode(true));
+            if (null !== this.constructor.template && typeof this.constructor.template === 'string') {
+            	template.innerHTML = `<style>${style}</style>${this.constructor.template}`;
+            } else if (this.constructor.template instanceof HTMLTemplateElement) {
+            	template.innerHTML = `<style>${style}</style>${this.constructor.template.content.textContent}`;
+            } else {
+            	template.innerHTML = `<style>${style}</style><slot></slot>`;
+            }
 
-        this.elementRef = Document.createElement(this.shadowRoot.host, this.shadowRoot.host);
+	        this.attachShadow({ mode: 'open' });
+	        this.shadowRoot.appendChild(template.content.cloneNode(true));
+
+	        this.elementRef = Document.createElement(this.shadowRoot, this.shadowRoot.host);
+			this._init = true;
+		}
+
         this.update();
 
         if (this.onConnected) {
             this.onConnected();
         }
     }
+
+	attributeChangedCallback(name, oldValue, newValue) {
+		if (undefined === this[name]) {
+			this[name] = new CustomElementProperty(name, (oldValue, newValue) => this.requestUpdate(oldValue, newValue));
+		}
+
+		if (this.onChanges) {
+            this.onChanges(name, oldValue, newValue);
+        }
+
+		this[name].value = newValue;
+	}
+
+	disconnectedCallback() {
+		if (this.onDisconnected) {
+            this.onDisconnected();
+        }
+	}
 
     requestUpdate(oldValue, newValue) {
         if (oldValue !== newValue) {
@@ -311,7 +349,7 @@ class CustomElement extends HTMLElement {
     }
 
     get scope() {
-    	return Object.assign({}, ...(this.constructor.properties.map(property => this[property].scope)));
+    	return Object.assign({}, ...([].concat(this.constructor.properties, this.constructor.observedAttributes).filter(p => !!this[p]).map(p => this[p].scope)));
     }
 
     static get properties() {
@@ -329,29 +367,36 @@ class CustomElement extends HTMLElement {
     static get template() {
         return null;
     }
+
+	static get styles() {
+		return [];
+	}
 }
 
-function router(routes) {
-    if (!Array.isArray(routes)) {
-        routes = [routes];
-    }
+class Router {
+	constructor(routes, container) {
+		this.routes = routes;
+		this.container = container;
 
-    if (!window.location.hash) {
-        window.location.hash = '#/';
-    }
+		if (!window.location.hash) {
+	        window.location.hash = '#/';
+	    }
 
-    function matchRoute() {
-        routes.forEach(route => {
-            if (window.location.hash.replace("#", "").match(new RegExp(`^${route.path}$`))) {
-                route.container.innerHTML = null;
-                route.container.appendChild(document.createElement(route.component));
-            }
-        });
-    };
+		window.addEventListener("hashchange", () => this._matchRoute());
 
-    window.addEventListener("hashchange", function() {
-        matchRoute();
-    });
+	    this._matchRoute();
+	}
 
-    matchRoute();
-};
+	add(route) {
+		this.routes.push(route);
+	}
+
+	_matchRoute() {
+		this.routes.forEach(route => {
+			if (window.location.hash.replace("#", "").match(new RegExp(`^${route.path}$`))) {
+				this.container.innerHTML = null;
+				this.container.appendChild(document.createElement(route.component));
+			}
+		});
+	}
+}

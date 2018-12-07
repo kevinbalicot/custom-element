@@ -1,16 +1,15 @@
 {
-  "name": "tamia",
+  "name": "@kevinbalicot/custom-element",
   "version": "0.1.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Little Web Components library",
+  "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare": "make build"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Kevin Balicot <kevinbalicot@gmail.com>",
+  "license": "MIT",
   "devDependencies": {
-    "http-server": "^0.11.1",
     "uglify-es": "^3.3.9"
   }
 }
