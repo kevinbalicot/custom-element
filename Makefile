@@ -1,7 +1,7 @@
 DIST_DIR = ./dist
 BIN_DIR = ./node_modules/.bin
-BIN_FILE = $(DIST_DIR)/tamia.js
-BIN_FILE_MIN = $(DIST_DIR)/tamia.min.js
+BIN_FILE = $(DIST_DIR)/custom-element.js
+BIN_FILE_MIN = $(DIST_DIR)/custom-element.min.js
 
 build: build-dev
 	$(BIN_DIR)/uglifyjs --keep-fnames -c -m -o $(BIN_FILE_MIN) src/index.js

@@ -14,13 +14,16 @@ class Container {
             return null;
         }
 
-        var service = this._items[key];
-
+        const service = this._items[key];
         if (service.instance) {
             return service.instance;
         }
 
-        this._items[key].instance = new service.object(...service.parameters.map(p => this.get(p)));
+		if (typeof service.object === 'function') {
+			this._items[key].instance = new service.object(...service.parameters.map(p => this.get(p)));
+		} else {
+			this._items[key].instance = service.object;
+		}
 
         return service.instance;
     }
@@ -230,6 +233,10 @@ class CustomElementProperty {
         }
     }
 
+	bind(element, event = 'change') {
+		element.addEventListener(event, e => this.value = e.target.value);
+	}
+
     set value(value) {
         this._oldValue = this._cloneValue(this._value);
         this._value = value;
@@ -274,6 +281,10 @@ class CustomElement extends HTMLElement {
             this[property] = new CustomElementProperty(property, (oldValue, newValue) => this.requestUpdate(oldValue, newValue));
         });
 
+		this.constructor.observedAttributes.forEach(property => {
+			this[property] = new CustomElementProperty(property, (oldValue, newValue) => this.requestUpdate(oldValue, newValue));
+		});
+
 		this._init = false;
         this._container = container;
         this.constructor.injects.forEach(inject => {
@@ -312,10 +323,6 @@ class CustomElement extends HTMLElement {
     }
 
 	attributeChangedCallback(name, oldValue, newValue) {
-		if (undefined === this[name]) {
-			this[name] = new CustomElementProperty(name, (oldValue, newValue) => this.requestUpdate(oldValue, newValue));
-		}
-
 		if (this.onChanges) {
             this.onChanges(name, oldValue, newValue);
         }
@@ -388,29 +395,44 @@ class CustomElement extends HTMLElement {
 	}
 }
 
-class Router {
-	constructor(routes, container) {
-		this.routes = routes;
-		this.container = container;
+class Router extends Injectable {
+	constructor() {
+		super();
+
+		this.routes = [];
+		this.params = [];
 
 		if (!window.location.hash) {
 	        window.location.hash = '#/';
 	    }
 
 		window.addEventListener("hashchange", () => this._matchRoute());
-
-	    this._matchRoute();
 	}
 
-	add(route) {
-		this.routes.push(route);
+	add(routes) {
+		if (!Array.isArray(routes)) {
+			routes = [routes];
+		}
+
+		routes.forEach(route => this.routes.push(route));
+
+		this._matchRoute();
 	}
 
 	_matchRoute() {
+		let params;
+		let activate;
 		this.routes.forEach(route => {
-			if (window.location.hash.replace("#", "").match(new RegExp(`^${route.path}$`))) {
-				this.container.innerHTML = null;
-				this.container.appendChild(document.createElement(route.component));
+			params = window.location.hash.replace("#", "").match(new RegExp(`^${route.path}$`));
+			activate = undefined != route.activate ? route.activate : () => true;
+			if (params) {
+				this.params = params.map(el => decodeURIComponent(el));
+				Promise.resolve(activate()).then(result => {
+					if (result) {
+						route.container.innerHTML = null;
+						route.container.appendChild(document.createElement(route.component));
+					}
+				});
 			}
 		});
 	}
