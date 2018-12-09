@@ -1,6 +1,6 @@
 {
   "name": "@kevinbalicot/custom-element",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Little Web Components library",
   "main": "src/index.js",
   "scripts": {
