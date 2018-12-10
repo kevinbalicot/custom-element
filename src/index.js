@@ -402,10 +402,6 @@ class Router extends Injectable {
 		this.routes = [];
 		this.params = [];
 
-		if (!window.location.hash) {
-	        window.location.hash = '#/';
-	    }
-
 		window.addEventListener("hashchange", () => this._matchRoute());
 	}
 
@@ -416,7 +412,11 @@ class Router extends Injectable {
 
 		routes.forEach(route => this.routes.push(route));
 
-		this._matchRoute();
+		if (!window.location.hash) {
+			window.location.hash = '#/';
+		} else {
+			this._matchRoute();
+		}
 	}
 
 	_matchRoute() {
