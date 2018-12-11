@@ -3,11 +3,12 @@ BIN_DIR = ./node_modules/.bin
 BIN_FILE = $(DIST_DIR)/custom-element.js
 BIN_FILE_MIN = $(DIST_DIR)/custom-element.min.js
 
-build: build-dev
-	$(BIN_DIR)/uglifyjs --keep-fnames -c -m -o $(BIN_FILE_MIN) src/index.js
-
 build-dev: $(DIST_DIR) node_modules
-	cp src/index.js $(BIN_FILE)
+	$(BIN_DIR)/browserify src/index.js -d -o $(BIN_FILE) -t [ babelify ]
+
+build: build-dev
+	$(BIN_DIR)/browserify src/index.js -t [ babelify ] | $(BIN_DIR)/uglifyjs --keep-fnames -c -o $(BIN_FILE_MIN)
+
 
 clean:
 	rm -rf ./node_modules && rm -rf $(DIST_DIR)

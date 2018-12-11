@@ -1,15 +1,24 @@
 {
   "name": "@kevinbalicot/custom-element",
-  "version": "0.2.2",
-  "description": "Little Web Components library",
+  "version": "0.3.0",
+  "description": "Tiny library to make custom elements",
   "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare": "make build"
   },
+  "babel": {
+    "presets": [
+      "@babel/preset-env"
+    ]
+  },
   "author": "Kevin Balicot <kevinbalicot@gmail.com>",
   "license": "MIT",
   "devDependencies": {
-    "uglify-es": "^3.3.9"
+    "@babel/core": "^7.2.0",
+    "@babel/preset-env": "^7.2.0",
+    "babelify": "^10.0.0",
+    "browserify": "^16.2.3",
+    "uglify-js": "^3.4.9"
   }
 }
