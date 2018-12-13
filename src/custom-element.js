@@ -125,7 +125,7 @@ export class CustomElement extends HTMLElement {
 
     requestUpdate(oldValue, newValue) {
         if (oldValue !== newValue) {
-        	this.update();
+            this.update();
         }
     }
 

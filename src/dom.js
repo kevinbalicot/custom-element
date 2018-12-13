@@ -22,9 +22,16 @@ class Node {
 
             this.toRemoveAttributes.forEach(attribute => this.element.removeAttribute(attribute.name));
         }
+
+        this._lock = false;
     }
 
     dispatchEvent(event) {
+        if (this._lock) {
+            return;
+        }
+
+        this._lock = true;
         this.customAttributes.forEach(attribute => {
             const levels = attribute.name.replace('[', '').replace(']', '').split('.');
             const value = this.parseExpression('return ' + attribute.value, event.detail, this.root);
@@ -33,12 +40,13 @@ class Node {
 
 		this.customEvents.forEach(attribute => {
 			const eventName = attribute.name.replace('(', '').replace(')', '');
-			const callback = $event => this.parseExpression(attribute.value, Object.assign({ $event }, event.detail), this.root);
-			this.element.removeEventListener(eventName, callback);
-			this.element.addEventListener(eventName, callback);
+            this.element.removeEventListener(eventName, this.element[`_${eventName}Handler`]);
+			this.element[`_${eventName}Handler`] = $event => this.parseExpression(attribute.value, Object.assign({ $event }, event.detail), this.root);
+			this.element.addEventListener(eventName, this.element[`_${eventName}Handler`]);
 		});
 
         this.children.forEach(node => node.dispatchEvent(event));
+        this._lock = false
     }
 
     parseExpression(expression, parameters = {}, scope = {}) {
