@@ -1,6 +1,6 @@
 {
   "name": "@kevinbalicot/custom-element",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Tiny library to make custom elements",
   "main": "src/index.js",
   "scripts": {
