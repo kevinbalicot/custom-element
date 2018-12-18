@@ -232,6 +232,72 @@ window.customElements.define('home-component', HomeComponent);
 
 ### Container and Injectable services
 
+```javascript
+class Http {
+	get(url) {
+        return fetch(url).then(result => result.text());
+    }
+}
+
+class MarkdownDecoder {
+	constructor() {
+        this.converter = new showdown.Converter();
+    }
+
+    decode(markdown) {
+        return this.converter.makeHtml(markdown);
+    }
+}
+
+// Define class is injectable in another class with injects() static
+class ReadmeLoader extends Injectable {
+	constructor(http, markdownDecoder) {
+        super();
+
+        this.http = http;
+        this.decoder = markdownDecoder;
+    }
+
+    load(url) {
+    	return this.http.get(url).then(data => this.decoder.decode(data));
+    }
+
+    static get injects() {
+    	return [Http, MarkdownDecoder];
+    }
+}
+
+class ReadmeComponent extends CustomElement {
+	constructor() {
+    	super();
+
+        this.url = 'https://raw.githubusercontent.com/kevinbalicot/custom-element/master/README.md';
+    	this.readmeLoader = this.get('ReadmeLoader');
+
+        this.content.value = null;
+    }
+
+    onConnected() {
+    	this.readmeLoader.load(this.url).then(content => {
+        	this.content.value = content;
+        });
+    }
+
+    static get properties() {
+    	return ['content'];
+    }
+
+	static get template() {
+    	return `
+            <div [innerHTML]="content"></div>
+        `;
+    }
+
+    static get injects() {
+    	return [Http, MarkdownDecoder, ReadmeLoader];
+    }
+}
+```
 
 ### Routing
 
