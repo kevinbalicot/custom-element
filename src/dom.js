@@ -19,8 +19,6 @@ class Node {
                     this.toRemoveAttributes.push(this.element.attributes[i]);
                 }
             }
-
-            this.toRemoveAttributes.forEach(attribute => this.element.removeAttribute(attribute.name));
         }
 
         this._lock = false;
@@ -51,7 +49,11 @@ class Node {
 
     parseExpression(expression, parameters = {}, scope = {}) {
         const f = new Function(...(Object.keys(parameters).concat([expression])));
-        return f.call(scope, ...(Object.values(parameters)));
+        try {
+            return f.call(scope, ...(Object.values(parameters)));
+        } catch (e) {
+            throw new Error(`${e.message} from "${scope.constructor.name} > ${this.element.tagName} > ${expression}"`);
+        }
     }
 
     applyCustomAttribute(element, attributeNames, value) {
@@ -74,10 +76,6 @@ class Node {
         }
     }
 
-	clone() {
-		return Document.cloneNode(this, this.element.cloneNode(true), this.parent, this.customAttributes, this.customEvents);
-	}
-
 	get root() {
 		// element.getRootNode()
 		let element = this.element;
@@ -93,7 +91,7 @@ class IfNode extends Node {
     constructor(element, parent, children = []) {
         super(element, parent, children);
 
-        this.if = this.element.getAttribute('if');
+        this.if = this.element.getAttribute('#if');
         this.mask = document.createTextNode('');
         this.hidden = false;
     }
@@ -118,16 +116,22 @@ class ForNode extends Node {
     constructor(element, parent, children = []) {
         super(element, parent, children);
 
-        this.for = this.element.getAttribute('for').match(/(?:var|let)\s+(\S+)\s+(?:in|of)\s+(\S+)/);
+        this.for = this.element.getAttribute('#for').match(/(?:var|let)\s+(\S+)\s+(?:in|of)\s+(\S+)/);
         this.mask = document.createTextNode('');
-		this.clone = this.clone();
-		this.clone.element.removeAttribute('for');
-        this.children = [];
+        this._init = false;
 
-        this.parent.replaceChild(this.mask, this.element);
+        this.clone = this.element.cloneNode(true);
+        this.clone.removeAttribute('#for');
+
+        this.children = [];
     }
 
     dispatchEvent(event) {
+        if (!this._init) {
+            this.parent.replaceChild(this.mask, this.element);
+            this._init = true;
+        }
+
         this.children.forEach(child => {
             if (Array.from(this.parent.children).indexOf(child.element) !== -1) {
                 this.parent.removeChild(child.element);
@@ -136,20 +140,19 @@ class ForNode extends Node {
 
         this.children = [];
 
-        const self = this;
-        function iteration(el, els) {
+        const iteration = (el, els) => {
             const index = els.indexOf(el);
-			const clone = self.clone.clone();
+            const clone = Document.createElement(this.clone.cloneNode(true), this.parent);
             const scope = {};
 
-			scope[self.for[1]] = els[index];
+            scope[this.for[1]] = els[index];
             scope['$index'] = index;
 
-            self.parent.insertBefore(clone.element, self.mask);
+            this.parent.insertBefore(clone.element, this.mask);
 
-            clone.dispatchEvent(new CustomEvent(event.type, { detail: scope }));
+            clone.dispatchEvent(new CustomEvent(event.type, { detail: Object.assign({}, event.detail, scope) }));
 
-            self.children.push(clone);
+            this.children.push(clone);
         }
 
         this.parseExpression(
@@ -162,42 +165,26 @@ class ForNode extends Node {
 
 export class Document {
     static createElement(element, parent) {
+        if (element.hasAttribute && element.hasAttribute('#for')) {
+            return new ForNode(element, parent, []);
+        }
+
         const children = [];
         for (let i = 0; i < element.children.length; i++) {
         	if (element.children[i].hasAttribute) {
-            	children.push(Document.createElement(element.children[i], element));
+                children.push(Document.createElement(element.children[i], element));
             }
         }
 
-        if (element.hasAttribute && element.hasAttribute('for') && element.tagName !== 'LABEL') {
-            return new ForNode(element, parent, children);
-        }
-
-        if (element.hasAttribute && element.hasAttribute('if')) {
+        if (element.hasAttribute && element.hasAttribute('#if')) {
             return new IfNode(element, parent, children);
         }
 
         return new Node(element, parent, children);
     }
 
-	static cloneNode(node, element, parent, customAttributes = [], customEvents = []) {
-        let clone;
-        if (element.hasAttribute && element.hasAttribute('if')) {
-            clone = new IfNode(element, parent);
-        } else {
-			clone = new Node(element, parent);
-		}
-
-		clone.customAttributes = customAttributes;
-		clone.customEvents = customEvents;
-
-		const children = [];
-		node.children.forEach((n, i) => {
-			children.push(Document.cloneNode(n, clone.element.children[i], clone.element, n.customAttributes, n.customEvents));
-		});
-
-		clone.children = children;
-
-		return clone;
-	}
+    static cleanNode(node) {
+        node.toRemoveAttributes.forEach(attribute => node.element.removeAttribute(attribute.name));
+        node.children.forEach(n => Document.cleanNode(n));
+    }
 }

@@ -129,8 +129,8 @@ class DemoComponent extends CustomElement {
                 <button type="submit">Add</button>
             </form>
             <ul>
-                <!-- use for attribute to make a loop -->
-            	<li for="let i of items">
+                <!-- use #for attribute to make a loop -->
+            	<li #for="let i of items">
                 	<span [innerHTML]="i" [class.stronger]="i.length > 5"></span>
                     <button (click)="this.onDeleteItem($index)">Delete</button>
                 </li>
@@ -171,8 +171,8 @@ class DemoComponent extends CustomElement {
             <button (click)="this.show.value = true">Show</button>
             <button (click)="this.show.value = false">Hide</button>
 
-            <!-- use if attribute to make a condition -->
-            <p if="show">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+            <!-- use #if attribute to make a condition -->
+            <p #if="show">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
         `;
     }
 }

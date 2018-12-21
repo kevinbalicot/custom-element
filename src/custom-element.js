@@ -83,9 +83,9 @@ export class CustomElement extends HTMLElement {
 
     connectedCallback() {
 		if (!this._init) {
-			const styles = !Array.isArray(this.constructor.styles) ? [this.constructor.styles] : this.constructor.styles;
+            const styles = !Array.isArray(this.constructor.styles) ? [this.constructor.styles] : this.constructor.styles;
             const style = styles.join("\n");
-			const template = document.createElement('template');
+            const template = document.createElement('template');
 
             if (null !== this.constructor.template && typeof this.constructor.template === 'string') {
             	template.innerHTML = `<style>${style}</style>${this.constructor.template}`;
@@ -95,11 +95,13 @@ export class CustomElement extends HTMLElement {
             	template.innerHTML = `<style>${style}</style><slot></slot>`;
             }
 
-	        this.attachShadow({ mode: 'open' });
-	        this.shadowRoot.appendChild(template.content.cloneNode(true));
+            this.attachShadow({ mode: 'open' });
+            this.shadowRoot.appendChild(template.content.cloneNode(true));
 
-	        this.elementRef = Document.createElement(this.shadowRoot, this.shadowRoot.host);
-			this._init = true;
+            this.elementRef = Document.createElement(this.shadowRoot, this.shadowRoot.host);
+            Document.cleanNode(this.elementRef);
+
+            this._init = true;
 		}
 
         this.update();
@@ -131,7 +133,8 @@ export class CustomElement extends HTMLElement {
 
     update() {
     	if (null !== this.elementRef) {
-        	this.elementRef.dispatchEvent(new CustomEvent('changes', { detail: this.scope }));
+            this.elementRef.dispatchEvent(new CustomEvent('changes', { detail: this.scope }));
+            Document.cleanNode(this.elementRef);
         }
     }
 
@@ -155,6 +158,10 @@ export class CustomElement extends HTMLElement {
         }
 
         return el;
+    }
+
+    dispatchEvent(event) {
+        return this.elementRef.element.host.dispatchEvent(event);
     }
 
     get scope() {
