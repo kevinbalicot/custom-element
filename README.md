@@ -15,37 +15,37 @@ $ npm install --save @kevinbalicot/custom-element
 ```html
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <title>My site</title>
+<head>
+    <meta charset="utf-8">
+    <title>My site</title>
 
-        <script src="/node_modules/@kevinbalicot/custom-element/dist/custom-element.js" charset="utf-8"></script>
-    </head>
-    <body>
-        <my-component></my-component>
+    <script src="/node_modules/@kevinbalicot/custom-element/dist/custom-element.js" charset="utf-8"></script>
+</head>
+<body>
+    <my-component></my-component>
 
-        <script>
-            class MyComponent extends CustomElement {
-                constructor() {
-                    super();
+    <script>
+    class MyComponent extends CustomElement {
+        constructor() {
+            super();
 
-                    this.name.value = 'Jean';
-                }
+            this.name.value = 'Jean';
+        }
 
-                static get properties() {
-                    return ['name'];
-                }
+        static get properties() {
+            return ['name'];
+        }
 
-                static get template() {
-                    return '<h1>Hello <span [innerHTML]="name"></span> !</h1>';
-                }
+        static get template() {
+            return '<h1>Hello <span [innerHTML]="name"></span> !</h1>';
+        }
 
-                static get styles() {
-                    return [':host(span) { color: red; }'];
-                }
-            }
-        </script>
-    </body>
+        static get styles() {
+            return [':host(span) { color: red; }'];
+        }
+    }
+    </script>
+</body>
 </html>
 ```
 
@@ -55,26 +55,26 @@ $ npm install --save @kevinbalicot/custom-element
 
 ```javascript
 class DemoComponent extends CustomElement {
-	constructor() {
-    	super();
+    constructor() {
+        super();
 
         this.text.value = null; // Custom property has setter to request a view render
     }
 
     /**
-     * Call when custom element call connectedCallback (see custom element life cycle)
-     */
+    * Call when custom element call connectedCallback (see custom element life cycle)
+    */
     onConnected() {
-    	this.text.bind(this.element('input[name=text]'), 'keyup');
+        this.text.bind(this.element('input[name=text]'), 'keyup');
     }
 
-	static get properties() {
-    	return ['text']; // Define custom properties
+    static get properties() {
+        return ['text']; // Define custom properties
     }
 
-	static get template() {
-    	return `
-        	<h2>Demo</h2>
+    static get template() {
+        return `
+            <h2>Demo</h2>
             <hr>
 
             <h3>Input binding</h3>
@@ -91,15 +91,15 @@ window.customElements.define('demo-component', DemoComponent);
 
 ```javascript
 class DemoComponent extends CustomElement {
-	constructor() {
-    	super();
+    constructor() {
+        super();
 
         this.items.value = [];
     }
 
     onConnected() {
-    	this.element('form[rol=list]').on('submit', event => {
-        	event.preventDefault();
+        this.element('form[rol=list]').on('submit', event => {
+            event.preventDefault();
 
             const input = event.target.querySelector('input[name=item]');
 
@@ -111,27 +111,28 @@ class DemoComponent extends CustomElement {
     }
 
     onDeleteItem(index) {
-    	this.items.splice(index, 1); // Slice is a proxy method to request a view render
+        this.items.splice(index, 1); // Slice is a proxy method to request a view render
     }
 
-	static get properties() {
-    	return ['items'];
+    static get properties() {
+        return ['items'];
     }
 
-	static get template() {
-    	return `
-        	<h2>Demo</h2>
+    static get template() {
+        return `
+            <h2>Demo</h2>
             <hr>
 
             <h3>For binding</h3>
             <form rol="list">
-            	<input type="text" name="item" required>
+                <input type="text" name="item" required>
                 <button type="submit">Add</button>
             </form>
+
             <ul>
                 <!-- use #for attribute to make a loop -->
-            	<li #for="let i of items">
-                	<span [innerHTML]="i" [class.stronger]="i.length > 5"></span>
+                <li #for="let i of items">
+                    <span [innerHTML]="i" [class.stronger]="i.length > 5"></span>
                     <button (click)="this.onDeleteItem($index)">Delete</button>
                 </li>
             </ul>
@@ -139,8 +140,8 @@ class DemoComponent extends CustomElement {
     }
 
     static get styles() {
-    	return [
-        	'.stronger { font-weight: bold }'
+        return [
+            '.stronger { font-weight: bold }'
         ];
     }
 }
@@ -152,19 +153,19 @@ window.customElements.define('demo-component', DemoComponent);
 
 ```javascript
 class DemoComponent extends CustomElement {
-	constructor() {
-    	super();
+    constructor() {
+        super();
 
         this.show.value = true;
     }
 
-	static get properties() {
-    	return ['show'];
+    static get properties() {
+        return ['show'];
     }
 
-	static get template() {
-    	return `
-        	<h2>Demo</h2>
+    static get template() {
+        return `
+            <h2>Demo</h2>
             <hr>
 
             <h3>If binding</h3>
@@ -172,7 +173,9 @@ class DemoComponent extends CustomElement {
             <button (click)="this.show.value = false">Hide</button>
 
             <!-- use #if attribute to make a condition -->
-            <p #if="show">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+            <p #if="show">
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+            </p>
         `;
     }
 }
@@ -186,18 +189,18 @@ window.customElements.define('demo-component', DemoComponent);
 class ColorComponent extends CustomElement {
 
     // Define ouputs
-	static get observedAttributes() {
-    	return ['color'];
+    static get observedAttributes() {
+        return ['color'];
     }
 
     static get template() {
-    	return '<span [style.background]="color" [innerHTML]="color"></span>';
+        return '<span [style.background]="color" [innerHTML]="color"></span>';
     }
 }
 
 class DemoComponent extends CustomElement {
-	constructor() {
-    	super();
+    constructor() {
+        super();
 
         this.color.value = '#000';
     }
@@ -206,13 +209,13 @@ class DemoComponent extends CustomElement {
         this.color.bind(this.element('input[name=color]')); // Default onChange event
     }
 
-	static get properties() {
-    	return ['color'];
+    static get properties() {
+        return ['color'];
     }
 
-	static get template() {
-    	return `
-        	<h2>Demo</h2>
+    static get template() {
+        return `
+            <h2>Demo</h2>
             <hr>
 
             <h3>Attribute binding</h3>
@@ -234,13 +237,13 @@ window.customElements.define('home-component', HomeComponent);
 
 ```javascript
 class Http {
-	get(url) {
+    get(url) {
         return fetch(url).then(result => result.text());
     }
 }
 
 class MarkdownDecoder {
-	constructor() {
+    constructor() {
         this.converter = new showdown.Converter();
     }
 
@@ -251,7 +254,7 @@ class MarkdownDecoder {
 
 // Define class is injectable in another class with injects() static
 class ReadmeLoader extends Injectable {
-	constructor(http, markdownDecoder) {
+    constructor(http, markdownDecoder) {
         super();
 
         this.http = http;
@@ -259,42 +262,40 @@ class ReadmeLoader extends Injectable {
     }
 
     load(url) {
-    	return this.http.get(url).then(data => this.decoder.decode(data));
+        return this.http.get(url).then(data => this.decoder.decode(data));
     }
 
     static get injects() {
-    	return [Http, MarkdownDecoder];
+        return [Http, MarkdownDecoder];
     }
 }
 
 class ReadmeComponent extends CustomElement {
-	constructor() {
-    	super();
+    constructor() {
+        super();
 
         this.url = 'https://raw.githubusercontent.com/kevinbalicot/custom-element/master/README.md';
-    	this.readmeLoader = this.get('ReadmeLoader');
+        this.readmeLoader = this.get('ReadmeLoader');
 
         this.content.value = null;
     }
 
     onConnected() {
-    	this.readmeLoader.load(this.url).then(content => {
-        	this.content.value = content;
+        this.readmeLoader.load(this.url).then(content => {
+            this.content.value = content;
         });
     }
 
     static get properties() {
-    	return ['content'];
+        return ['content'];
     }
 
-	static get template() {
-    	return `
-            <div [innerHTML]="content"></div>
-        `;
+    static get template() {
+        return '<div [innerHTML]="content"></div>';
     }
 
     static get injects() {
-    	return [Http, MarkdownDecoder, ReadmeLoader];
+        return [Http, MarkdownDecoder, ReadmeLoader];
     }
 }
 ```
@@ -303,28 +304,26 @@ class ReadmeComponent extends CustomElement {
 
 ```javascript
 class HomeComponent extends CustomElement {
-	constructor() {
-    	super();
+    constructor() {
+        super();
 
-    	this.router = this.get('Router');
+        this.router = this.get('Router');
     }
 
-	onConnected() {
-    	this.router.add([
-        	{ path: '/', component: 'readme-component', container: this.element('#view-container') },
+    onConnected() {
+        this.router.add([
+            { path: '/', component: 'readme-component', container: this.element('#view-container') },
             { path: '/demo', component: 'demo-component', container: this.element('#view-container') },
             { path: '/about', component: 'about-component', container: this.element('#view-container') }
         ]);
     }
 
-	static get template() {
-    	return `
-        	<div id="view-container"></div>
-        `;
+    static get template() {
+        return '<div id="view-container"></div>';
     }
 
     static get injects() {
-    	return [Router];
+        return [Router];
     }
 }
 
