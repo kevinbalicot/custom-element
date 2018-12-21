@@ -4,31 +4,31 @@ import { Document } from './dom';
 
 export class CustomElementProperty {
     constructor(name, callback) {
-    	this.name = name;
+        this.name = name;
         this._value = undefined;
         this._oldValue = undefined;
         this.callback = callback;
     }
 
     push(item) {
-    	if (Array.isArray(this.value)) {
-        	this._oldValue = this._cloneValue(this._value);
-        	this._value.push(item);
+        if (Array.isArray(this.value)) {
+            this._oldValue = this._cloneValue(this._value);
+            this._value.push(item);
             this.callback(this._oldValue, this._value);
         }
     }
 
-	splice() {
-		if (Array.isArray(this.value)) {
-        	this._oldValue = this._cloneValue(this._value);
-        	this._value.splice(...arguments);
+    splice() {
+        if (Array.isArray(this.value)) {
+            this._oldValue = this._cloneValue(this._value);
+            this._value.splice(...arguments);
             this.callback(this._oldValue, this._value);
         }
-	}
+    }
 
-	bind(element, event = 'change') {
-		element.addEventListener(event, e => this.value = e.target.value);
-	}
+    bind(element, event = 'change') {
+        element.addEventListener(event, e => this.value = e.target.value);
+    }
 
     set value(value) {
         this._oldValue = this._cloneValue(this._value);
@@ -42,17 +42,17 @@ export class CustomElementProperty {
     }
 
     _cloneValue() {
-		if (Array.isArray(this.value)) {
-        	return [].concat(this.value);
+        if (Array.isArray(this.value)) {
+            return [].concat(this.value);
         } else if (typeof this.value === 'object') {
-        	return Object.assign({}, this.value);
+            return Object.assign({}, this.value);
         }
 
         return this.value;
     }
 
     get scope() {
-    	const data = {};
+        const data = {};
 
         data[this.name] = this.value;
 
@@ -68,31 +68,31 @@ export class CustomElement extends HTMLElement {
             this[property] = new CustomElementProperty(property, (oldValue, newValue) => this.requestUpdate(oldValue, newValue));
         });
 
-		this.constructor.observedAttributes.forEach(property => {
-			this[property] = new CustomElementProperty(property, (oldValue, newValue) => this.requestUpdate(oldValue, newValue));
-		});
+        this.constructor.observedAttributes.forEach(property => {
+            this[property] = new CustomElementProperty(property, (oldValue, newValue) => this.requestUpdate(oldValue, newValue));
+        });
 
-		this._init = false;
+        this._init = false;
         this._container = container;
         this.constructor.injects.forEach(inject => {
-        	this._container.add(inject, inject, inject.injects || []);
+            this._container.add(inject, inject, inject.injects || []);
         });
 
         this.elementRef = null;
     }
 
     connectedCallback() {
-		if (!this._init) {
+        if (!this._init) {
             const styles = !Array.isArray(this.constructor.styles) ? [this.constructor.styles] : this.constructor.styles;
             const style = styles.join("\n");
             const template = document.createElement('template');
 
             if (null !== this.constructor.template && typeof this.constructor.template === 'string') {
-            	template.innerHTML = `<style>${style}</style>${this.constructor.template}`;
+                template.innerHTML = `<style>${style}</style>${this.constructor.template}`;
             } else if (this.constructor.template instanceof HTMLTemplateElement) {
-            	template.innerHTML = `<style>${style}</style>${this.constructor.template.content.textContent}`;
+                template.innerHTML = `<style>${style}</style>${this.constructor.template.content.textContent}`;
             } else {
-            	template.innerHTML = `<style>${style}</style><slot></slot>`;
+                template.innerHTML = `<style>${style}</style><slot></slot>`;
             }
 
             this.attachShadow({ mode: 'open' });
@@ -102,7 +102,7 @@ export class CustomElement extends HTMLElement {
             Document.cleanNode(this.elementRef);
 
             this._init = true;
-		}
+        }
 
         this.update();
 
@@ -111,19 +111,19 @@ export class CustomElement extends HTMLElement {
         }
     }
 
-	attributeChangedCallback(name, oldValue, newValue) {
-		this[name].value = newValue;
+    attributeChangedCallback(name, oldValue, newValue) {
+        this[name].value = newValue;
 
-		if (this.onChanges) {
+        if (this.onChanges) {
             this.onChanges(name, oldValue, newValue);
         }
-	}
+    }
 
-	disconnectedCallback() {
-		if (this.onDisconnected) {
+    disconnectedCallback() {
+        if (this.onDisconnected) {
             this.onDisconnected();
         }
-	}
+    }
 
     requestUpdate(oldValue, newValue) {
         if (oldValue !== newValue) {
@@ -132,7 +132,7 @@ export class CustomElement extends HTMLElement {
     }
 
     update() {
-    	if (null !== this.elementRef) {
+        if (null !== this.elementRef) {
             this.elementRef.dispatchEvent(new CustomEvent('changes', { detail: this.scope }));
             Document.cleanNode(this.elementRef);
         }
@@ -165,7 +165,7 @@ export class CustomElement extends HTMLElement {
     }
 
     get scope() {
-    	return Object.assign({}, ...([].concat(this.constructor.properties, this.constructor.observedAttributes).filter(p => !!this[p]).map(p => this[p].scope)));
+        return Object.assign({}, ...([].concat(this.constructor.properties, this.constructor.observedAttributes).filter(p => !!this[p]).map(p => this[p].scope)));
     }
 
     static get properties() {
@@ -173,7 +173,7 @@ export class CustomElement extends HTMLElement {
     }
 
     static get injects() {
-    	return [];
+        return [];
     }
 
     static get observedAttributes() {
@@ -184,7 +184,7 @@ export class CustomElement extends HTMLElement {
         return null;
     }
 
-	static get styles() {
-		return [];
-	}
+    static get styles() {
+        return [];
+    }
 }

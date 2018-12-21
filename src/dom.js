@@ -5,17 +5,17 @@ class Node {
         this.children = children;
 
         this.customAttributes = [];
-		this.customEvents = [];
-		this.toRemoveAttributes = [];
+        this.customEvents = [];
+        this.toRemoveAttributes = [];
         if (this.element.attributes) {
             for (let i = 0; i < this.element.attributes.length; i++) {
                 if (this.element.attributes[i].name.match(/\[(\S+)\]/g)) {
                     this.customAttributes.push(this.element.attributes[i]);
-					this.toRemoveAttributes.push(this.element.attributes[i]);
+                    this.toRemoveAttributes.push(this.element.attributes[i]);
                 }
 
-				if (this.element.attributes[i].name.match(/\((\S+)\)/g)) {
-					this.customEvents.push(this.element.attributes[i]);
+                if (this.element.attributes[i].name.match(/\((\S+)\)/g)) {
+                    this.customEvents.push(this.element.attributes[i]);
                     this.toRemoveAttributes.push(this.element.attributes[i]);
                 }
             }
@@ -36,12 +36,12 @@ class Node {
             this.applyCustomAttribute(this.element, levels, value);
         });
 
-		this.customEvents.forEach(attribute => {
-			const eventName = attribute.name.replace('(', '').replace(')', '');
+        this.customEvents.forEach(attribute => {
+            const eventName = attribute.name.replace('(', '').replace(')', '');
             this.element.removeEventListener(eventName, this.element[`_${eventName}Handler`]);
-			this.element[`_${eventName}Handler`] = $event => this.parseExpression(attribute.value, Object.assign({ $event }, event.detail), this.root);
-			this.element.addEventListener(eventName, this.element[`_${eventName}Handler`]);
-		});
+            this.element[`_${eventName}Handler`] = $event => this.parseExpression(attribute.value, Object.assign({ $event }, event.detail), this.root);
+            this.element.addEventListener(eventName, this.element[`_${eventName}Handler`]);
+        });
 
         this.children.forEach(node => node.dispatchEvent(event));
         this._lock = false
@@ -59,32 +59,32 @@ class Node {
     applyCustomAttribute(element, attributeNames, value) {
         switch (attributeNames[0]) {
             case 'innerhtml':
-                element.innerHTML = value;
-                break;
+            element.innerHTML = value;
+            break;
             case 'style':
-                element.style[attributeNames[1]] = value;
-                break;
+            element.style[attributeNames[1]] = value;
+            break;
             case 'class':
-                value ? element.classList.add(attributeNames[1]) : element.classList.remove(attributeNames[1]);
-                break;
+            value ? element.classList.add(attributeNames[1]) : element.classList.remove(attributeNames[1]);
+            break;
             case 'attribute':
             case 'attr':
-                element.setAttribute(attributeNames[1], value);
-                break;
+            element.setAttribute(attributeNames[1], value);
+            break;
             default:
-                element[attributeNames[0]] = value;
+            element[attributeNames[0]] = value;
         }
     }
 
-	get root() {
-		// element.getRootNode()
-		let element = this.element;
-		while(element.nodeType != 11 && element.parentNode) {
-			element = element.parentNode;
-		}
+    get root() {
+        // element.getRootNode()
+        let element = this.element;
+        while(element.nodeType != 11 && element.parentNode) {
+            element = element.parentNode;
+        }
 
-		return element.host || {};
-	}
+        return element.host || {};
+    }
 }
 
 class IfNode extends Node {
@@ -158,7 +158,7 @@ class ForNode extends Node {
         this.parseExpression(
             'for (' + this.for[0] + ') { iteration(' + this.for[1] + ', ' + this.for[2] + '); }',
             Object.assign({}, event.detail, { iteration }),
-			this.root
+            this.root
         );
     }
 }
@@ -171,7 +171,7 @@ export class Document {
 
         const children = [];
         for (let i = 0; i < element.children.length; i++) {
-        	if (element.children[i].hasAttribute) {
+            if (element.children[i].hasAttribute) {
                 children.push(Document.createElement(element.children[i], element));
             }
         }
