@@ -1,4 +1,4 @@
-export class Container {
+class Container {
 	constructor() {
 		this._items = {};
 	}
@@ -51,12 +51,10 @@ export class Container {
 	}
 }
 
-export class Injectable {
+class Injectable {
 	static get injects() {
 		return [];
 	}
 }
 
-const container = new Container();
-
-export default container;
+module.exports = { Injectable, container: new Container() };

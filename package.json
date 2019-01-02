@@ -1,11 +1,11 @@
 {
   "name": "@kevinbalicot/custom-element",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Tiny library to make custom elements",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "prepare": "make build"
+    "test": "mocha",
+    "prepare": "mocha && make build"
   },
   "babel": {
     "presets": [
@@ -19,6 +19,8 @@
     "@babel/preset-env": "^7.2.0",
     "babelify": "^10.0.0",
     "browserify": "^16.2.3",
+    "jsdom-wc": "^11.0.0-alpha-1",
+    "mocha": "^5.2.0",
     "uglify-js": "^3.4.9"
   }
 }

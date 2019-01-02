@@ -59,20 +59,20 @@ class Node {
     applyCustomAttribute(element, attributeNames, value) {
         switch (attributeNames[0]) {
             case 'innerhtml':
-            element.innerHTML = value;
-            break;
+                element.innerHTML = value;
+                break;
             case 'style':
-            element.style[attributeNames[1]] = value;
-            break;
+                element.style[attributeNames[1]] = value;
+                break;
             case 'class':
-            value ? element.classList.add(attributeNames[1]) : element.classList.remove(attributeNames[1]);
-            break;
+                value ? element.classList.add(attributeNames[1]) : element.classList.remove(attributeNames[1]);
+                break;
             case 'attribute':
             case 'attr':
-            element.setAttribute(attributeNames[1], value);
-            break;
+                element.setAttribute(attributeNames[1], value);
+                break;
             default:
-            element[attributeNames[0]] = value;
+                element[attributeNames[0]] = value;
         }
     }
 
@@ -97,7 +97,7 @@ class IfNode extends Node {
     }
 
     dispatchEvent(event) {
-        var result = this.parseExpression('return ' + this.if, event.detail);
+        var result = this.parseExpression('return ' + this.if, event.detail, this.root);
 
         if (!result && !this.hidden) {
             this.parent.replaceChild(this.mask, this.element);
@@ -163,7 +163,7 @@ class ForNode extends Node {
     }
 }
 
-export class Document {
+class Document {
     static createElement(element, parent) {
         if (element.hasAttribute && element.hasAttribute('#for')) {
             return new ForNode(element, parent, []);
@@ -188,3 +188,5 @@ export class Document {
         node.children.forEach(n => Document.cleanNode(n));
     }
 }
+
+module.exports = { Document };

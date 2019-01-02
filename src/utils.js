@@ -1,6 +1,6 @@
 import { Injectable } from './di';
 
-export class Router extends Injectable {
+class Router extends Injectable {
 	constructor() {
 		super();
 
@@ -42,3 +42,5 @@ export class Router extends Injectable {
 		});
 	}
 }
+
+module.exports = { Router };

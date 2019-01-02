@@ -1,8 +1,7 @@
-import container from './di';
+const { container } = require('./di');
+const { Document } = require('./dom');
 
-import { Document } from './dom';
-
-export class CustomElementProperty {
+class CustomElementProperty {
     constructor(name, callback) {
         this.name = name;
         this._value = undefined;
@@ -60,7 +59,7 @@ export class CustomElementProperty {
     }
 }
 
-export class CustomElement extends HTMLElement {
+class CustomElement extends HTMLElement {
     constructor() {
         super();
 
@@ -188,3 +187,5 @@ export class CustomElement extends HTMLElement {
         return [];
     }
 }
+
+module.exports = { CustomElementProperty, CustomElement };
