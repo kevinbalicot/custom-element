@@ -111,6 +111,9 @@ class CustomElement extends HTMLElement {
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
+        oldValue = JSON.parse(oldValue);
+        newValue = JSON.parse(newValue);
+
         this[name].value = newValue;
 
         if (this.onChanges) {

@@ -5,11 +5,11 @@ const dom = new JSDOM(``, { runScripts: 'dangerously' });
 const window = dom.window;
 
 Object.assign(global, {
-  document: window.document,
-  HTMLElement: window.HTMLElement,
-  customElements: window.customElements,
-  CustomEvent: window.CustomEvent,
-  window,
+    document: window.document,
+    HTMLElement: window.HTMLElement,
+    customElements: window.customElements,
+    CustomEvent: window.CustomEvent,
+    window,
 });
 
 const { CustomElement } = require('./../src/custom-element');

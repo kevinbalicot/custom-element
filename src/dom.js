@@ -22,6 +22,7 @@ class Node {
         }
 
         this._lock = false;
+        this._root = this.root;
     }
 
     dispatchEvent(event) {
@@ -69,6 +70,9 @@ class Node {
                 break;
             case 'attribute':
             case 'attr':
+                if (typeof value === 'object') {
+                    value = JSON.stringify(value);
+                }
                 element.setAttribute(attributeNames[1], value);
                 break;
             default:
@@ -78,12 +82,16 @@ class Node {
 
     get root() {
         // element.getRootNode()
-        let element = this.element;
-        while(element.nodeType != 11 && element.parentNode) {
-            element = element.parentNode;
+        if (!this._root) {
+            let element = this.element;
+            while(element.nodeType != 11 && element.parentNode) {
+                element = element.parentNode;
+            }
+
+            return element.host || null;
         }
 
-        return element.host || {};
+        return this._root;
     }
 }
 
