@@ -111,8 +111,13 @@ class CustomElement extends HTMLElement {
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
-        oldValue = JSON.parse(oldValue);
-        newValue = JSON.parse(newValue);
+        try {
+            oldValue = JSON.parse(oldValue);
+        } catch (e) {}
+
+        try {
+            newValue = JSON.parse(newValue);
+        } catch (e) {}
 
         this[name].value = newValue;
 
@@ -162,7 +167,7 @@ class CustomElement extends HTMLElement {
         return el;
     }
 
-    dispatchEvent(event) {
+    emit(event) {
         return this.elementRef.element.host.dispatchEvent(event);
     }
 

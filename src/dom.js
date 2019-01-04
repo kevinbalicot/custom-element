@@ -68,6 +68,9 @@ class Node {
             case 'class':
                 value ? element.classList.add(attributeNames[1]) : element.classList.remove(attributeNames[1]);
                 break;
+            case 'classname':
+                element.className = value;
+                break;
             case 'attribute':
             case 'attr':
                 if (typeof value === 'object') {
