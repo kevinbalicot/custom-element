@@ -73,6 +73,7 @@ class CustomElement extends HTMLElement {
 
         this._init = false;
         this._container = container;
+        this._timer = null;
         this.constructor.injects.forEach(inject => {
             this._container.add(inject, inject, inject.injects || []);
         });
@@ -134,7 +135,8 @@ class CustomElement extends HTMLElement {
 
     requestUpdate(oldValue, newValue) {
         if (oldValue !== newValue) {
-            this.update();
+            clearTimeout(this._timer);
+            this._timer = setTimeout(() => this.update());
         }
     }
 
