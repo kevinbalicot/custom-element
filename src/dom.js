@@ -62,7 +62,7 @@ class Node {
                 element.innerHTML = value;
                 break;
             case 'style':
-                element.style[attributeNames[1]] = value;
+                element.style[attributeNames[1]] = !!attributeNames[2] ? value + attributeNames[2] : value;
                 break;
             case 'class':
                 value ? element.classList.add(attributeNames[1]) : element.classList.remove(attributeNames[1]);
