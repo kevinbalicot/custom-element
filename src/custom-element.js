@@ -9,10 +9,10 @@ class CustomElementProperty {
         this.callback = callback;
     }
 
-    push(item) {
+    push() {
         if (Array.isArray(this.value)) {
             this._oldValue = this._cloneValue(this._value);
-            this._value.push(item);
+            this._value.push(...arguments);
             this.callback(this._oldValue, this._value);
         }
     }
@@ -21,6 +21,68 @@ class CustomElementProperty {
         if (Array.isArray(this.value)) {
             this._oldValue = this._cloneValue(this._value);
             this._value.splice(...arguments);
+            this.callback(this._oldValue, this._value);
+        }
+    }
+
+    pop() {
+        let result = null;
+        if (Array.isArray(this.value)) {
+            this._oldValue = this._cloneValue(this._value);
+            result = this._value.pop();
+            this.callback(this._oldValue, this._value);
+        }
+
+        return result;
+    }
+
+    shift() {
+        let result = null;
+        if (Array.isArray(this.value)) {
+            this._oldValue = this._cloneValue(this._value);
+            result = this._value.shift();
+            this.callback(this._oldValue, this._value);
+        }
+
+        return result;
+    }
+
+    map() {
+        if (Array.isArray(this.value)) {
+            this._oldValue = this._cloneValue(this._value);
+            this._value = this.value.map(...arguments);
+            this.callback(this._oldValue, this._value);
+        }
+    }
+
+    concat() {
+        if (Array.isArray(this.value)) {
+            this._oldValue = this._cloneValue(this._value);
+            this._value = this.value.concat(...arguments);
+            this.callback(this._oldValue, this._value);
+        }
+    }
+
+    reverse() {
+        if (Array.isArray(this.value)) {
+            this._oldValue = this._cloneValue(this._value);
+            this._value = this.value.reverse();
+            this.callback(this._oldValue, this._value);
+        }
+    }
+
+    toggle() {
+        if (true === this.value || false === this.value) {
+            this._oldValue = this._cloneValue(this._value);
+            this._value = !this.value;
+            this.callback(this._oldValue, this._value);
+        }
+    }
+
+    add(number) {
+        if (typeof this.value === 'number') {
+            this._oldValue = this._cloneValue(this._value);
+            this._value += number;
             this.callback(this._oldValue, this._value);
         }
     }
@@ -40,14 +102,8 @@ class CustomElementProperty {
         return this._value;
     }
 
-    _cloneValue() {
-        if (Array.isArray(this.value)) {
-            return [].concat(this.value);
-        } else if (typeof this.value === 'object') {
-            return Object.assign({}, this.value);
-        }
-
-        return this.value;
+    get length() {
+        return this.value.length;
     }
 
     get scope() {
@@ -56,6 +112,16 @@ class CustomElementProperty {
         data[this.name] = this.value;
 
         return data;
+    }
+
+    _cloneValue() {
+        if (Array.isArray(this.value)) {
+            return [].concat(this.value);
+        } else if (typeof this.value === 'object') {
+            return Object.assign({}, this.value);
+        }
+
+        return this.value;
     }
 }
 
@@ -120,6 +186,10 @@ class CustomElement extends HTMLElement {
             newValue = JSON.parse(newValue);
         } catch (e) {}
 
+        if (oldValue === newValue) {
+            return;
+        }
+
         this[name].value = newValue;
 
         if (this.onChanges) {
@@ -140,11 +210,14 @@ class CustomElement extends HTMLElement {
         }
     }
 
-    update() {
-        if (null !== this.elementRef) {
-            this.elementRef.dispatchEvent(new CustomEvent('changes', { detail: this.scope }));
-            Document.cleanNode(this.elementRef);
+    update(element = null) {
+        if (null !== element) {
+            Document.searchNode(element, this.elementRef).update(this.scope, this);
+        } else if (null !== this.elementRef) {
+            this.elementRef.update(this.scope, this);
         }
+
+        Document.cleanNode(this.elementRef);
     }
 
     get(key) {

@@ -22,10 +22,9 @@ class Node {
         }
 
         this._lock = false;
-        this._root = this.root;
     }
 
-    dispatchEvent(event) {
+    update(detail = {}, scope = {}) {
         if (this._lock) {
             return;
         }
@@ -33,18 +32,18 @@ class Node {
         this._lock = true;
         this.customAttributes.forEach(attribute => {
             const levels = attribute.name.replace('[', '').replace(']', '').split('.');
-            const value = this.parseExpression('return ' + attribute.value, event.detail, this.root);
+            const value = this.parseExpression('return ' + attribute.value, detail, scope);
             this.applyCustomAttribute(this.element, levels, value);
         });
 
         this.customEvents.forEach(attribute => {
             const eventName = attribute.name.replace('(', '').replace(')', '');
             this.element.removeEventListener(eventName, this.element[`_${eventName}Handler`]);
-            this.element[`_${eventName}Handler`] = $event => this.parseExpression(attribute.value, Object.assign({ $event }, event.detail), this.root);
+            this.element[`_${eventName}Handler`] = $event => this.parseExpression(attribute.value, Object.assign({ $event }, detail), scope);
             this.element.addEventListener(eventName, this.element[`_${eventName}Handler`]);
         });
 
-        this.children.forEach(node => node.dispatchEvent(event));
+        this.children.forEach(node => node.update(detail, scope));
         this._lock = false
     }
 
@@ -82,20 +81,6 @@ class Node {
                 element[attributeNames[0]] = value;
         }
     }
-
-    get root() {
-        // element.getRootNode()
-        if (!this._root) {
-            let element = this.element;
-            while(element.nodeType != 11 && element.parentNode) {
-                element = element.parentNode;
-            }
-
-            return element.host || null;
-        }
-
-        return this._root;
-    }
 }
 
 class IfNode extends Node {
@@ -107,8 +92,8 @@ class IfNode extends Node {
         this.hidden = false;
     }
 
-    dispatchEvent(event) {
-        var result = this.parseExpression('return ' + this.if, event.detail, this.root);
+    update(detail = {}, scope = {}) {
+        var result = this.parseExpression('return ' + this.if, detail, scope);
 
         if (!result && !this.hidden) {
             this.parent.replaceChild(this.mask, this.element);
@@ -116,9 +101,9 @@ class IfNode extends Node {
         } else if (result && this.hidden) {
             this.parent.replaceChild(this.element, this.mask);
             this.hidden = false;
-            super.dispatchEvent(event);
+            super.update(detail, scope);
         } else if (!this.hidden) {
-            super.dispatchEvent(event);
+            super.update(detail, scope);
         }
     }
 }
@@ -137,7 +122,7 @@ class ForNode extends Node {
         this.children = [];
     }
 
-    dispatchEvent(event) {
+    update(detail = {}, scope = {}) {
         if (!this._init) {
             this.parent.replaceChild(this.mask, this.element);
             this._init = true;
@@ -154,22 +139,22 @@ class ForNode extends Node {
         const iteration = (el, els) => {
             const index = els.indexOf(el);
             const clone = Document.createElement(this.clone.cloneNode(true), this.parent);
-            const scope = {};
+            const s = {};
 
-            scope[this.for[1]] = els[index];
-            scope['$index'] = index;
+            s[this.for[1]] = els[index];
+            s['$index'] = index;
 
             this.parent.insertBefore(clone.element, this.mask);
 
-            clone.dispatchEvent(new CustomEvent(event.type, { detail: Object.assign({}, event.detail, scope) }));
+            clone.update(Object.assign({}, detail, s), scope);
 
             this.children.push(clone);
         }
 
         this.parseExpression(
             'for (' + this.for[0] + ') { iteration(' + this.for[1] + ', ' + this.for[2] + '); }',
-            Object.assign({}, event.detail, { iteration }),
-            this.root
+            Object.assign({}, detail, { iteration }),
+            scope
         );
     }
 }
@@ -197,6 +182,23 @@ class Document {
     static cleanNode(node) {
         node.toRemoveAttributes.forEach(attribute => node.element.removeAttribute(attribute.name));
         node.children.forEach(n => Document.cleanNode(n));
+    }
+
+    static searchNode(element, root) {
+        if (element === root.element) {
+            return root;
+        }
+
+        let result;
+        for (let i = 0; i < root.children.length; i++) {
+            result = Document.searchNode(element, root.children[i]);
+
+            if (null !== result) {
+                return result;
+            }
+        }
+
+        return null;
     }
 }
 
