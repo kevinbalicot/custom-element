@@ -130,11 +130,11 @@ class CustomElement extends HTMLElement {
         super();
 
         this.constructor.properties.forEach(property => {
-            this[property] = new CustomElementProperty(property, (oldValue, newValue) => this.requestUpdate(oldValue, newValue));
+            this[property] = new CustomElementProperty(property, (oldValue, newValue) => this.requestUpdate(property, oldValue, newValue));
         });
 
         this.constructor.observedAttributes.forEach(property => {
-            this[property] = new CustomElementProperty(property, (oldValue, newValue) => this.requestUpdate(oldValue, newValue));
+            this[property] = new CustomElementProperty(property, (oldValue, newValue) => this.requestUpdate(property, oldValue, newValue));
         });
 
         this._init = false;
@@ -203,7 +203,7 @@ class CustomElement extends HTMLElement {
         }
     }
 
-    requestUpdate(oldValue, newValue) {
+    requestUpdate(property, oldValue, newValue) {
         if (oldValue !== newValue) {
             clearTimeout(this._timer);
             this._timer = setTimeout(() => this.update());
@@ -211,13 +211,13 @@ class CustomElement extends HTMLElement {
     }
 
     update(element = null) {
-        if (null !== element) {
+        if (null !== element && null !== this.elementRef) {
             Document.searchNode(element, this.elementRef).update(this.scope, this);
+            Document.cleanNode(this.elementRef);
         } else if (null !== this.elementRef) {
             this.elementRef.update(this.scope, this);
+            Document.cleanNode(this.elementRef);
         }
-
-        Document.cleanNode(this.elementRef);
     }
 
     get(key) {
