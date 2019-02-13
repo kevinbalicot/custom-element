@@ -2,18 +2,19 @@ const { container } = require('./di');
 const { Document } = require('./dom');
 
 class CustomElementProperty {
-    constructor(name, callback) {
+    constructor(name, callback, links = []) {
         this.name = name;
         this._value = undefined;
         this._oldValue = undefined;
         this.callback = callback;
+        this.links = links;
     }
 
     push() {
         if (Array.isArray(this.value)) {
             this._oldValue = this._cloneValue(this._value);
             this._value.push(...arguments);
-            this.callback(this._oldValue, this._value);
+            this.callback(this, this._oldValue, this._value);
         }
     }
 
@@ -21,7 +22,7 @@ class CustomElementProperty {
         if (Array.isArray(this.value)) {
             this._oldValue = this._cloneValue(this._value);
             this._value.splice(...arguments);
-            this.callback(this._oldValue, this._value);
+            this.callback(this, this._oldValue, this._value);
         }
     }
 
@@ -30,7 +31,7 @@ class CustomElementProperty {
         if (Array.isArray(this.value)) {
             this._oldValue = this._cloneValue(this._value);
             result = this._value.pop();
-            this.callback(this._oldValue, this._value);
+            this.callback(this, this._oldValue, this._value);
         }
 
         return result;
@@ -41,7 +42,7 @@ class CustomElementProperty {
         if (Array.isArray(this.value)) {
             this._oldValue = this._cloneValue(this._value);
             result = this._value.shift();
-            this.callback(this._oldValue, this._value);
+            this.callback(this, this._oldValue, this._value);
         }
 
         return result;
@@ -51,7 +52,7 @@ class CustomElementProperty {
         if (Array.isArray(this.value)) {
             this._oldValue = this._cloneValue(this._value);
             this._value = this.value.map(...arguments);
-            this.callback(this._oldValue, this._value);
+            this.callback(this, this._oldValue, this._value);
         }
     }
 
@@ -59,7 +60,7 @@ class CustomElementProperty {
         if (Array.isArray(this.value)) {
             this._oldValue = this._cloneValue(this._value);
             this._value = this.value.concat(...arguments);
-            this.callback(this._oldValue, this._value);
+            this.callback(this, this._oldValue, this._value);
         }
     }
 
@@ -67,7 +68,7 @@ class CustomElementProperty {
         if (Array.isArray(this.value)) {
             this._oldValue = this._cloneValue(this._value);
             this._value = this.value.reverse();
-            this.callback(this._oldValue, this._value);
+            this.callback(this, this._oldValue, this._value);
         }
     }
 
@@ -75,7 +76,7 @@ class CustomElementProperty {
         if (true === this.value || false === this.value) {
             this._oldValue = this._cloneValue(this._value);
             this._value = !this.value;
-            this.callback(this._oldValue, this._value);
+            this.callback(this, this._oldValue, this._value);
         }
     }
 
@@ -83,7 +84,7 @@ class CustomElementProperty {
         if (typeof this.value === 'number') {
             this._oldValue = this._cloneValue(this._value);
             this._value += number;
-            this.callback(this._oldValue, this._value);
+            this.callback(this, this._oldValue, this._value);
         }
     }
 
@@ -95,7 +96,7 @@ class CustomElementProperty {
         this._oldValue = this._cloneValue(this._value);
         this._value = value;
 
-        this.callback(this._oldValue, this._value);
+        this.callback(this, this._oldValue, this._value);
     }
 
     get value() {
@@ -130,11 +131,25 @@ class CustomElement extends HTMLElement {
         super();
 
         this.constructor.properties.forEach(property => {
-            this[property] = new CustomElementProperty(property, (oldValue, newValue) => this.requestUpdate(property, oldValue, newValue));
+            let name = property;
+            let links = [];
+            if (typeof property === 'object') {
+                name = property.name;
+                links = property.links;
+            }
+
+            this[name] = new CustomElementProperty(name, (property, oldValue, newValue) => this.requestUpdate(property, oldValue, newValue), links);
         });
 
         this.constructor.observedAttributes.forEach(property => {
-            this[property] = new CustomElementProperty(property, (oldValue, newValue) => this.requestUpdate(property, oldValue, newValue));
+            let name = property;
+            let links = [];
+            if (typeof property === 'object') {
+                name = property.name;
+                links = property.links;
+            }
+
+            this[name] = new CustomElementProperty(name, (property, oldValue, newValue) => this.requestUpdate(property, oldValue, newValue), links);
         });
 
         this._init = false;
@@ -205,8 +220,12 @@ class CustomElement extends HTMLElement {
 
     requestUpdate(property, oldValue, newValue) {
         if (oldValue !== newValue) {
-            clearTimeout(this._timer);
-            this._timer = setTimeout(() => this.update());
+            if (property.links.length > 0 && null !== this.elementRef) {
+                property.links.forEach(link => this.update(this.element(link)));
+            } else {
+                clearTimeout(this._timer);
+                this._timer = setTimeout(() => this.update());
+            }
         }
     }
 
@@ -247,7 +266,10 @@ class CustomElement extends HTMLElement {
     }
 
     get scope() {
-        return Object.assign({}, ...([].concat(this.constructor.properties, this.constructor.observedAttributes).filter(p => !!this[p]).map(p => this[p].scope)));
+        const properties = this.constructor.properties.map(element => typeof element === 'object' ? element.name : element);
+        const observedAttributes = this.constructor.observedAttributes.map(element => typeof element === 'object' ? element.name : element);
+
+        return Object.assign({}, ...([].concat(properties, observedAttributes).filter(p => !!this[p]).map(p => this[p].scope)));
     }
 
     static get properties() {
