@@ -9,7 +9,6 @@ build-dev: $(DIST_DIR) node_modules
 build: build-dev
 	$(BIN_DIR)/browserify src/index.js -t [ babelify ] | $(BIN_DIR)/uglifyjs --keep-fnames -c -o $(BIN_FILE_MIN)
 
-
 clean:
 	rm -rf ./node_modules && rm -rf $(DIST_DIR)
 

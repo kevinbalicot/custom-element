@@ -112,7 +112,7 @@ class ForNode extends Node {
     constructor(element, parent, children = []) {
         super(element, parent, children);
 
-        this.for = this.element.getAttribute('#for').match(/(?:var|let)\s+(\S+)\s+(?:in|of)\s+(\S+)/);
+        this.for = this.element.getAttribute('#for').match(/(?:var|let|const)\s+(\S+)\s+(?:in|of)\s+(\S+)/);
         this.mask = document.createTextNode('');
         this._init = false;
 

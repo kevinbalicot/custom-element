@@ -4,7 +4,7 @@ Tiny library to make custom HTML elements
 
 Live demo [https://jsfiddle.net/kevinbalicot/L08q4k21/](https://jsfiddle.net/kevinbalicot/L08q4k21/)
 
-## Installation
+## Installation
 
 ```bash
 $ npm install --save @kevinbalicot/custom-element
@@ -29,15 +29,11 @@ $ npm install --save @kevinbalicot/custom-element
         constructor() {
             super();
 
-            this.name.value = 'Jean';
-        }
-
-        static get properties() {
-            return ['name'];
+            this.name = 'Jean';
         }
 
         static get template() {
-            return '<h1>Hello <span [innerHTML]="name"></span> !</h1>';
+            return '<h1>Hello <span [innerHTML]="this.name"></span> !</h1>';
         }
 
         static get styles() {
@@ -58,18 +54,17 @@ class DemoComponent extends CustomElement {
     constructor() {
         super();
 
-        this.text.value = null; // Custom property has setter to request a view render
+        this.text = null;
     }
 
     /**
     * Call when custom element call connectedCallback (see custom element life cycle)
     */
     onConnected() {
-        this.text.bind(this.element('input[name=text]'), 'keyup');
-    }
-
-    static get properties() {
-        return ['text']; // Define custom properties
+        this.element('input[name=text]').on('keyup', event => {
+            this.text = event.target.value;
+            this.update('p');
+        });
     }
 
     static get template() {
@@ -78,8 +73,8 @@ class DemoComponent extends CustomElement {
             <hr>
 
             <h3>Input binding</h3>
-            <label id="text">Type something</label><input [value]="text" type="text" name="text">
-            <p [innerHTML]="'You tipping: ' + text"></p>
+            <label id="text">Type something</label><input type="text" name="text">
+            <p [innerHTML]="'You tipping: ' + this.text"></p>
         `;
     }
 }
@@ -94,7 +89,7 @@ class DemoComponent extends CustomElement {
     constructor() {
         super();
 
-        this.items.value = [];
+        this.items = [];
     }
 
     onConnected() {
@@ -106,16 +101,15 @@ class DemoComponent extends CustomElement {
             if (input.value) {
                 this.items.push(input.value);
                 input.value = null;
+
+                this.update('ul');
             }
         });
     }
 
     onDeleteItem(index) {
-        this.items.splice(index, 1); // Slice is a proxy method to request a view render
-    }
-
-    static get properties() {
-        return ['items'];
+        this.items.splice(index, 1);
+        this.update('ul');
     }
 
     static get template() {
@@ -131,7 +125,7 @@ class DemoComponent extends CustomElement {
 
             <ul>
                 <!-- use #for attribute to make a loop -->
-                <li #for="let i of items">
+                <li #for="let i of this.items">
                     <span [innerHTML]="i" [class.stronger]="i.length > 5"></span>
                     <button (click)="this.onDeleteItem($index)">Delete</button>
                 </li>
@@ -156,11 +150,12 @@ class DemoComponent extends CustomElement {
     constructor() {
         super();
 
-        this.show.value = true;
+        this.show = true;
     }
 
-    static get properties() {
-        return ['show'];
+    toggle(value) {
+        this.show = value;
+        this.update('p');
     }
 
     static get template() {
@@ -169,11 +164,11 @@ class DemoComponent extends CustomElement {
             <hr>
 
             <h3>If binding</h3>
-            <button (click)="this.show.value = true">Show</button>
-            <button (click)="this.show.value = false">Hide</button>
+            <button (click)="this.toggle(true)">Show</button>
+            <button (click)="this.toggle(false)">Hide</button>
 
             <!-- use #if attribute to make a condition -->
-            <p #if="show">
+            <p #if="this.show">
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
             </p>
         `;
@@ -187,6 +182,10 @@ window.customElements.define('demo-component', DemoComponent);
 
 ```javascript
 class ColorComponent extends CustomElement {
+    constructor() {
+        super();
+        this.color = '#fff';
+    }
 
     // Define ouputs
     static get observedAttributes() {
@@ -194,7 +193,7 @@ class ColorComponent extends CustomElement {
     }
 
     static get template() {
-        return '<span [style.background]="color" [innerHTML]="color"></span>';
+        return '<span [style.background]="this.color" [innerHTML]="this.color"></span>';
     }
 }
 
@@ -202,15 +201,14 @@ class DemoComponent extends CustomElement {
     constructor() {
         super();
 
-        this.color.value = '#000';
+        this.color = '#000';
     }
 
     onConnected() {
-        this.color.bind(this.element('input[name=color]')); // Default onChange event
-    }
-
-    static get properties() {
-        return ['color'];
+        this.element('input[name=color]').on('change', event => {
+            this.color = event.target.value;
+            this.update(); // Update all template
+        });
     }
 
     static get template() {
@@ -219,12 +217,12 @@ class DemoComponent extends CustomElement {
             <hr>
 
             <h3>Attribute binding</h3>
-            <label [style.color]="color">Choose your color</label>
-            <input [value]="color" type="color" name="color">
+            <label [style.color]="this.color">Choose your color</label>
+            <input [value]="this.color" type="color" name="color">
 
             <h5>Sub component</h5>
             <!-- use another custom component with outputs -->
-            <color-component [attr.color]="color"></color-component>
+            <color-component [attr.color]="this.color"></color-component>
         `;
     }
 }
@@ -277,21 +275,18 @@ class ReadmeComponent extends CustomElement {
         this.url = 'https://raw.githubusercontent.com/kevinbalicot/custom-element/master/README.md';
         this.readmeLoader = this.get('ReadmeLoader');
 
-        this.content.value = null;
+        this.content = null;
     }
 
     onConnected() {
         this.readmeLoader.load(this.url).then(content => {
-            this.content.value = content;
+            this.content = content;
+            this.update('div');
         });
     }
 
-    static get properties() {
-        return ['content'];
-    }
-
     static get template() {
-        return '<div [innerHTML]="content"></div>';
+        return '<div [innerHTML]="this.content"></div>';
     }
 
     static get injects() {
