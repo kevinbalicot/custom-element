@@ -12,6 +12,9 @@ build: build-dev
 clean:
 	rm -rf ./node_modules && rm -rf $(DIST_DIR)
 
+test: node_modules
+	$(BIN_DIR)/mocha
+
 .PHONY: build build-dev clean
 
 node_modules: package.json

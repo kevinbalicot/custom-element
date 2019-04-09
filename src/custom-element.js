@@ -70,19 +70,29 @@ class CustomElement extends HTMLElement {
         }
     }
 
-    update(element = null, detail = {}) {
+    update(element = null, details = {}) {
         if (null === this.elementRef) {
             return false;
+        }
+
+        if (Array.isArray(element)) {
+            return element.map(el => this.update(el, details));
         }
 
         if (typeof element === 'string') {
             element = this.element(element);
         }
 
+        for (let prop in details) {
+            if (undefined !== this[prop]) {
+                this[prop] = details[prop];
+            }
+        }
+
         if (null !== element) {
-            Document.searchNode(element, this.elementRef).update(Object.assign({}, this._container.scope, detail), this);
+            Document.searchNode(element, this.elementRef).update(Object.assign({}, this._container.scope), this);
         } else {
-            this.elementRef.update(Object.assign({}, this._container.scope, detail), this);
+            this.elementRef.update(Object.assign({}, this._container.scope), this);
         }
 
         Document.cleanNode(this.elementRef);
@@ -116,6 +126,18 @@ class CustomElement extends HTMLElement {
         }
 
         return el;
+    }
+
+    elementAll(selector) {
+        const els = this.elementRef.element.querySelectorAll(selector);
+
+        Array.from(els).forEach(el => {
+            if (el && !el.on) {
+                el.on = (event, callback, options = false) => el.addEventListener(event, callback, options);
+            }
+        });
+
+        return Array.from(els);
     }
 
     emit(event) {

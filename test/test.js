@@ -27,6 +27,15 @@ class MyComponent extends CustomElement {
         this.info = false;
         this.items = [];
         this.clicks = 0;
+
+        this.attrs = {
+            color: 'blue',
+            title: 'Hello!',
+            className: 'some-class',
+            classToto: true,
+            width: 10,
+            height: 50
+        };
     }
 
     onConnected() {
@@ -44,11 +53,23 @@ class MyComponent extends CustomElement {
     static get template() {
         return `
             <h1>Hello world</h1>
-            <div [innerHTML]="this.text"></div>
+            <div id="div" [innerHTML]="this.text"></div>
             <p #if="this.info">My information banner</p>
             <ul><li #for="let i of this.items" [innerHTML]="i"></li></ul>
             <button (click)="this.clicks++">Click here</button>
             <a href="">Click on my link</a>
+
+            <strong class="update-me-same-time" [innerHTML]="this.text"></strong>
+            <i class="update-me-same-time" [innerHTML]="this.text"></i>
+
+            <div id="change-attributes"
+                [style.color]="this.attrs.color"
+                [title]="this.attrs.title"
+                [className]="this.attrs.className"
+                [class.toto]="this.attrs.classToto"
+                [style.width.px]="this.attrs.width"
+                [style.height.%]="this.attrs.height">
+            </div>
         `;
     }
 
@@ -87,6 +108,53 @@ describe('Custom Element', () => {
         assert(element.element('style').textContent);
     });
 
+    it('should be able to change attributes of element', () => {
+        const element = window.document.querySelector('my-component');
+        const div = element.element('#change-attributes');
+
+        assert.equal(div.style.color, element.attrs.color);
+        assert.equal(div.title, element.attrs.title);
+        assert.equal(div.className, element.attrs.className + ' toto');
+        assert.equal(div.classList.contains('toto'), true);
+        assert.equal(div.style.width, element.attrs.width + 'px');
+        assert.equal(div.style.height, element.attrs.height + '%');
+
+        const expected = {
+            color: 'red',
+            title: 'Hello you <3',
+            className: 'other-some-class',
+            classToto: false,
+            width: 50,
+            height: 10
+        };
+
+        element.attrs = expected;
+        element.update('#change-attributes');
+
+        assert.equal(div.style.color, expected.color);
+        assert.equal(div.title, expected.title);
+        assert.equal(div.className, expected.className);
+        assert.equal(div.classList.contains('toto'), false);
+        assert.equal(div.style.width, expected.width + 'px');
+        assert.equal(div.style.height, expected.height + '%');
+    });
+
+    it('should be able to get one element', () => {
+        const element = window.document.querySelector('my-component');
+
+        assert.equal(element.element('h1').tagName, 'H1');
+        assert.equal(element.element('#div').tagName, 'DIV');
+        assert.equal(element.element('.update-me-same-time').tagName, 'STRONG');
+    });
+
+    it('should be able to get some elements', () => {
+        const element = window.document.querySelector('my-component');
+        const elements = element.elementAll('.update-me-same-time');
+        const expected = ['STRONG', 'I'];
+
+        elements.forEach((el, index) => assert.equal(el.tagName, expected[index]));
+    });
+
     it('should be able to update content', () => {
         const element = window.document.querySelector('my-component');
         const expected = 'I changed my webpage.';
@@ -97,6 +165,36 @@ describe('Custom Element', () => {
         element.update('div');
 
         assert.equal(element.element('div').innerHTML, expected);
+    });
+
+    it('should be able to update content with details', () => {
+        const element = window.document.querySelector('my-component');
+        const expected = 'Another text.';
+
+        element.update('div', { text: expected });
+
+        assert.equal(element.element('div').innerHTML, expected);
+        assert.equal(element.text, expected);
+    });
+
+    it('should be able to update some elements', () => {
+        const init = 'some text';
+        const expected = 'I changed my text.';
+
+        // reinit
+        const element = window.document.querySelector('my-component');
+        element.text = init;
+        element.update();
+
+        assert.equal(element.element('strong').innerHTML, element.text);
+        assert.equal(element.element('i').innerHTML, element.text);
+
+        element.text = expected;
+        element.update(['strong', 'i']);
+
+        assert.equal(element.element('strong').innerHTML, expected);
+        assert.equal(element.element('i').innerHTML, expected);
+        assert.equal(element.element('div').innerHTML, init);
     });
 
     it('should be able to change observed attributes', () => {
