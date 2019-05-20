@@ -48,6 +48,8 @@ class Node {
     }
 
     parseExpression(expression, parameters = {}, scope = {}) {
+        parameters = Object.assign({}, parameters, this.element.dataset);
+
         const f = new Function(...(Object.keys(parameters).concat([expression])));
         try {
             return f.call(scope, ...(Object.values(parameters)));
@@ -57,6 +59,13 @@ class Node {
     }
 
     applyCustomAttribute(element, attributeNames, value) {
+        for (let customAttribute of Document.constructor.customAttributes) {
+            const { selector, callback } = customAttribute;
+            if (attributeNames[0] === selector) {
+                return callback(element, value, attributeNames);
+            }
+        }
+
         switch (attributeNames[0]) {
             case 'innerhtml':
                 element.innerHTML = value;
@@ -93,7 +102,7 @@ class IfNode extends Node {
     }
 
     update(detail = {}, scope = {}) {
-        var result = this.parseExpression('return ' + this.if, detail, scope);
+        const result = this.parseExpression('return ' + this.if, detail, scope);
 
         if (!result && !this.hidden) {
             this.parent.replaceChild(this.mask, this.element);
@@ -137,11 +146,11 @@ class ForNode extends Node {
         this.children = [];
 
         const iteration = (el, els) => {
-            const index = els.indexOf(el);
+            const index = Array.isArray(els) ? els.indexOf(el) : el;
             const clone = Document.createElement(this.clone.cloneNode(true), this.parent);
             const s = {};
 
-            s[this.for[1]] = els[index];
+            s[this.for[1]] = Array.isArray(els) ? els[index] : el;
             s['$index'] = index;
 
             this.parent.insertBefore(clone.element, this.mask);
@@ -156,6 +165,17 @@ class ForNode extends Node {
             Object.assign({}, detail, { iteration }),
             scope
         );
+    }
+}
+
+class CustomNode extends Node {
+    constructor(element, parent, children) {
+        super(element, parent, children);
+        this.attribute = this.element.getAttribute(this.constructor.selector);
+    }
+
+    static get selector() {
+        return null;
     }
 }
 
@@ -174,6 +194,13 @@ class Document {
 
         if (element.hasAttribute && element.hasAttribute('#if')) {
             return new IfNode(element, parent, children);
+        }
+
+        for (let customNode of Document.constructor.customNodes) {
+            const { selector, className } = customNode;
+            if (element.hasAttribute && element.hasAttribute(selector)) {
+                return new className(element, parent, children);
+            }
         }
 
         return new Node(element, parent, children);
@@ -200,6 +227,17 @@ class Document {
 
         return null;
     }
+
+    static addCustomNode(customNode) {
+        Document.constructor.customNodes.push({ selector: customNode.selector, className: customNode });
+    }
+
+    static addCustomAttribute(selector, callback) {
+        Document.constructor.customAttributes.push({ selector, callback });
+    }
 }
 
-module.exports = { Document };
+Document.constructor.customNodes = [];
+Document.constructor.customAttributes = [];
+
+module.exports = { CustomNode, Document };

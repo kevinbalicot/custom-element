@@ -17,19 +17,21 @@ class CustomElement extends HTMLElement {
     connectedCallback() {
         if (!this._init) {
             const styles = !Array.isArray(this.constructor.styles) ? [this.constructor.styles] : this.constructor.styles;
-            const style = styles.join("\n");
-            const template = document.createElement('template');
+            const style = document.createElement('style');
+            style.innerHTML = styles.join("\n");
 
+            const template = document.createElement('template');
             if (null !== this.constructor.template && typeof this.constructor.template === 'string') {
-                template.innerHTML = `<style>${style}</style>${this.constructor.template}`;
+                template.innerHTML = `${this.constructor.template}`;
             } else if (this.constructor.template instanceof HTMLTemplateElement) {
-                template.innerHTML = `<style>${style}</style>${this.constructor.template.content.textContent}`;
+                template.innerHTML = `${this.constructor.template.content.textContent}`;
             } else {
-                template.innerHTML = `<style>${style}</style><slot></slot>`;
+                template.innerHTML = `<slot></slot>`;
             }
 
             this.attachShadow({ mode: 'open' });
-            this.shadowRoot.appendChild(template.content.cloneNode(true));
+            this.shadowRoot.appendChild(style);
+            this.shadowRoot.appendChild(document.importNode(template.content, true));
 
             this.elementRef = Document.createElement(this.shadowRoot, this.shadowRoot.host);
             Document.cleanNode(this.elementRef);
@@ -53,7 +55,7 @@ class CustomElement extends HTMLElement {
             newValue = JSON.parse(newValue);
         } catch (e) {}
 
-        if (oldValue === newValue) {
+        if (this[name] === newValue) {
             return;
         }
 
