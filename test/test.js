@@ -50,12 +50,16 @@ class MyComponent extends CustomElement {
         callers.onDisconnected++;
     }
 
-    static get template() {
+    get template() {
         return `
             <h1>Hello world</h1>
             <div id="div" [innerHTML]="this.text"></div>
-            <p #if="this.info">My information banner</p>
-            <ul><li #for="let i of this.items" [innerHTML]="i"></li></ul>
+            ${ this.info ? '<p>My information banner</p>' : '' }
+            <ul>
+                ${
+                    this.items.map(i => `<li>${i}</li>`).join('')
+                }
+            </ul>
             <button (click)="this.clicks++">Click here</button>
             <a href="">Click on my link</a>
 
@@ -129,7 +133,7 @@ describe('Custom Element', () => {
         };
 
         element.attrs = expected;
-        element.update('#change-attributes');
+        element.update();
 
         assert.equal(div.style.color, expected.color);
         assert.equal(div.title, expected.title);
@@ -162,7 +166,7 @@ describe('Custom Element', () => {
         assert.equal(element.element('div').innerHTML, element.text);
 
         element.text = expected;
-        element.update('div');
+        element.update();
 
         assert.equal(element.element('div').innerHTML, expected);
     });
@@ -171,7 +175,7 @@ describe('Custom Element', () => {
         const element = window.document.querySelector('my-component');
         const expected = 'Another text.';
 
-        element.update('div', { text: expected });
+        element.update({ text: expected });
 
         assert.equal(element.element('div').innerHTML, expected);
         assert.equal(element.text, expected);
@@ -190,11 +194,11 @@ describe('Custom Element', () => {
         assert.equal(element.element('i').innerHTML, element.text);
 
         element.text = expected;
-        element.update(['strong', 'i']);
+        element.update();
 
         assert.equal(element.element('strong').innerHTML, expected);
         assert.equal(element.element('i').innerHTML, expected);
-        assert.equal(element.element('div').innerHTML, init);
+        assert.equal(element.element('div').innerHTML, expected);
     });
 
     it('should be able to change observed attributes', () => {
@@ -224,7 +228,7 @@ describe('Custom Element', () => {
         assert(!element.element('p'));
 
         element.info = true;
-        element.update('p');
+        element.update();
 
         assert(element.element('p'));
     });
@@ -236,7 +240,7 @@ describe('Custom Element', () => {
         assert.equal(element.element('ul').children.length, 0);
 
         element.items.push(expected);
-        element.update('ul');
+        element.update();
 
         assert.equal(element.element('ul').children.length, 1);
         assert.strictEqual(element.element('ul').children[0].innerHTML, String(expected));
@@ -244,13 +248,13 @@ describe('Custom Element', () => {
         [1,2,3,4,5].forEach(i => {
             element.items.push(i);
             assert.equal(element.element('ul').children.length, element.items.length - 1);
-            element.update('ul');
+            element.update();
             assert.equal(element.element('ul').children.length, element.items.length);
         });
 
         element.items.splice(0, 1);
         assert.equal(element.element('ul').children.length, element.items.length + 1);
-        element.update('ul');
+        element.update();
         assert.equal(element.element('ul').children.length, element.items.length);
     });
 

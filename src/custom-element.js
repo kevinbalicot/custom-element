@@ -1,5 +1,5 @@
 const { container } = require('./di');
-const { Document } = require('./dom');
+const { render } = require('./vdom');
 
 class CustomElement extends HTMLElement {
     constructor() {
@@ -7,34 +7,21 @@ class CustomElement extends HTMLElement {
 
         this._init = false;
         this._container = container;
+        this._style = null;
+
         this.constructor.injects.forEach(inject => {
             this._container.add(inject, inject, inject.injects || []);
         });
-
-        this.elementRef = null;
     }
 
     connectedCallback() {
         if (!this._init) {
             const styles = !Array.isArray(this.constructor.styles) ? [this.constructor.styles] : this.constructor.styles;
-            const style = document.createElement('style');
-            style.innerHTML = styles.join("\n");
 
-            const template = document.createElement('template');
-            if (null !== this.constructor.template && typeof this.constructor.template === 'string') {
-                template.innerHTML = `${this.constructor.template}`;
-            } else if (this.constructor.template instanceof HTMLTemplateElement) {
-                template.innerHTML = `${this.constructor.template.content.textContent}`;
-            } else {
-                template.innerHTML = `<slot></slot>`;
-            }
+            this._style = document.createElement('style');
+            this._style.innerHTML = styles.join("\n");
 
             this.attachShadow({ mode: 'open' });
-            this.shadowRoot.appendChild(style);
-            this.shadowRoot.appendChild(document.importNode(template.content, true));
-
-            this.elementRef = Document.createElement(this.shadowRoot, this.shadowRoot.host);
-            Document.cleanNode(this.elementRef);
 
             this._init = true;
         }
@@ -72,34 +59,14 @@ class CustomElement extends HTMLElement {
         }
     }
 
-    update(element = null, details = {}) {
-        if (null === this.elementRef) {
-            return false;
-        }
-
-        if (Array.isArray(element)) {
-            return element.map(el => this.update(el, details));
-        }
-
-        if (typeof element === 'string') {
-            element = this.element(element);
-        }
-
+    update(details = {}) {
         for (let prop in details) {
             if (undefined !== this[prop]) {
                 this[prop] = details[prop];
             }
         }
 
-        if (null !== element) {
-            Document.searchNode(element, this.elementRef).update(Object.assign({}, this._container.scope), this);
-        } else {
-            this.elementRef.update(Object.assign({}, this._container.scope), this);
-        }
-
-        Document.cleanNode(this.elementRef);
-
-        return true;
+        render(this.shadowRoot, `${this._style.outerHTML}${this.template}`, this);
     }
 
     get(key) {
@@ -115,13 +82,13 @@ class CustomElement extends HTMLElement {
     }
 
     on(event, callback, options = false) {
-        this.elementRef.element.addEventListener(event, callback, options);
+        this.shadowRoot.addEventListener(event, callback, options);
 
         return this;
     }
 
     element(selector) {
-        const el = this.elementRef.element.querySelector(selector);
+        const el = this.shadowRoot.querySelector(selector);
 
         if (el && !el.on) {
             el.on = (event, callback, options = false) => el.addEventListener(event, callback, options);
@@ -131,7 +98,7 @@ class CustomElement extends HTMLElement {
     }
 
     elementAll(selector) {
-        const els = this.elementRef.element.querySelectorAll(selector);
+        const els = this.shadowRoot.querySelectorAll(selector);
 
         Array.from(els).forEach(el => {
             if (el && !el.on) {
@@ -143,7 +110,11 @@ class CustomElement extends HTMLElement {
     }
 
     emit(event) {
-        return this.elementRef.element.host.dispatchEvent(event);
+        return this.shadowRoot.dispatchEvent(event);
+    }
+
+    get template() {
+        return '<slot></slot>';
     }
 
     static get injects() {
@@ -152,10 +123,6 @@ class CustomElement extends HTMLElement {
 
     static get observedAttributes() {
         return [];
-    }
-
-    static get template() {
-        return null;
     }
 
     static get styles() {
