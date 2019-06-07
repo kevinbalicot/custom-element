@@ -113,7 +113,7 @@ class CustomElement extends HTMLElement {
         return this.shadowRoot.dispatchEvent(event);
     }
 
-    get template() {
+    static get template() {
         return '<slot></slot>';
     }
 
