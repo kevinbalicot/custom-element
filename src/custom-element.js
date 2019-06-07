@@ -7,7 +7,7 @@ class CustomElement extends HTMLElement {
 
         this._init = false;
         this._container = container;
-        this._style = null;
+        this._style = document.createElement('style');
 
         this.constructor.injects.forEach(inject => {
             this._container.add(inject, inject, inject.injects || []);
@@ -17,8 +17,6 @@ class CustomElement extends HTMLElement {
     connectedCallback() {
         if (!this._init) {
             const styles = !Array.isArray(this.constructor.styles) ? [this.constructor.styles] : this.constructor.styles;
-
-            this._style = document.createElement('style');
             this._style.innerHTML = styles.join("\n");
 
             this.attachShadow({ mode: 'open' });
@@ -66,7 +64,9 @@ class CustomElement extends HTMLElement {
             }
         }
 
-        render(this.shadowRoot, `${this._style.outerHTML}${this.template}`, this);
+        if (this.shadowRoot) {
+            render(this.shadowRoot, `${this._style.outerHTML}${this.template}`, this);
+        }
     }
 
     get(key) {

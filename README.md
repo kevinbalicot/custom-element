@@ -63,7 +63,7 @@ class DemoComponent extends CustomElement {
     onConnected() {
         this.element('input[name=text]').on('keyup', event => {
             this.text = event.target.value;
-            this.update('p');
+            this.update();
         });
     }
 
@@ -109,7 +109,7 @@ class DemoComponent extends CustomElement {
 
     onDeleteItem(index) {
         this.items.splice(index, 1);
-        this.update('ul');
+        this.update();
     }
 
     static get template() {
@@ -155,7 +155,7 @@ class DemoComponent extends CustomElement {
 
     toggle(value) {
         this.show = value;
-        this.update('p');
+        this.update();
     }
 
     static get template() {
@@ -207,7 +207,7 @@ class DemoComponent extends CustomElement {
     onConnected() {
         this.element('input[name=color]').on('change', event => {
             this.color = event.target.value;
-            this.update(); // Update all template
+            this.update();
         });
     }
 
@@ -281,7 +281,7 @@ class ReadmeComponent extends CustomElement {
     onConnected() {
         this.readmeLoader.load(this.url).then(content => {
             this.content = content;
-            this.update('div');
+            this.update();
         });
     }
 

@@ -54,11 +54,9 @@ class MyComponent extends CustomElement {
         return `
             <h1>Hello world</h1>
             <div id="div" [innerHTML]="this.text"></div>
-            ${ this.info ? '<p>My information banner</p>' : '' }
+            <p #if="this.info">My information banner</p>
             <ul>
-                ${
-                    this.items.map(i => `<li>${i}</li>`).join('')
-                }
+                <li #for="let i of this.items" [innerHTML]="i"></li>
             </ul>
             <button (click)="this.clicks++">Click here</button>
             <a href="">Click on my link</a>
