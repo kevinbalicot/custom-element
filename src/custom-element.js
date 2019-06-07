@@ -65,7 +65,7 @@ class CustomElement extends HTMLElement {
         }
 
         if (this.shadowRoot) {
-            render(this.shadowRoot, `${this._style.outerHTML}${this.template}`, this);
+            render(this.shadowRoot, `${this._style.outerHTML}${this.constructor.template}`, this);
         }
     }
 

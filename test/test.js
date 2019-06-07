@@ -50,7 +50,7 @@ class MyComponent extends CustomElement {
         callers.onDisconnected++;
     }
 
-    get template() {
+    static get template() {
         return `
             <h1>Hello world</h1>
             <div id="div" [innerHTML]="this.text"></div>
