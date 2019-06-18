@@ -8,6 +8,20 @@ const VDOM = {
     render: render
 };
 
+function flatten(elements) {
+    const result = [];
+
+    elements.forEach(element => {
+        if (Array.isArray(element)) {
+            element.forEach(el => result.push(el));
+        } else if (element) {
+            result.push(element);
+        }
+    });
+
+    return result;
+}
+
 function parseExpression(expression, parameters = {}, scope = {}) {
     parameters = Object.assign({}, parameters);
     if (scope._container) {
@@ -122,7 +136,7 @@ function parseHtml(html) {
 function createVirtualDOM(element, scope = {}, details = {}) {
     return {
         type: 'template',
-        children: Array.from(element.childNodes).map(node => createVirtualElement(node, scope, details))
+        children: flatten(Array.from(element.childNodes).map(node => createVirtualElement(node, scope, details)))
     };
 }
 
@@ -188,7 +202,7 @@ function createVirtualElement(element, scope = {}, details = {}) {
                     replaces.push(createVirtualElement(clone, scope, Object.assign({}, details, s)));
                 }
 
-                details[forAttr[1]] = null; // For init
+                details[forAttr[1]] = {}; // For init
                 parseExpression(
                     'for (' + forAttr[0] + ') { iteration(' + forAttr[1] + ', ' + forAttr[2] + '); }',
                     Object.assign({}, details, { iteration }),
@@ -210,22 +224,12 @@ function createVirtualElement(element, scope = {}, details = {}) {
         return replaces.length ? replaces : null;
     }
 
-    const children = [];
-    Array.from(element.childNodes).map(node => {
-        const vEls = createVirtualElement(node, scope, details);
-        if (Array.isArray(vEls)) {
-            vEls.forEach(vEl => children.push(vEl));
-        } else if (vEls) {
-            children.push(vEls);
-        }
-    });
-
     return {
         type: String(element.tagName).toLowerCase(),
         attributes: Array.from(element.attributes),
         customAttributes: element._customAttributes,
         customEvents: element._customEvents,
-        children
+        children: flatten(Array.from(element.childNodes).map(node => createVirtualElement(node, scope, details)))
     };
 }
 
@@ -242,7 +246,11 @@ function createElement(vElement) {
             throw Error(`Error occured with attribute "${attr.name}" and value "${attr.value}": ${e.message} `)
         }
     });
-    vElement.customAttributes.forEach(attr => applyCustomAttribute(element, attr.name.split('.'), attr.value));
+
+    if (vElement.type != 'search-bar-component') {
+        vElement.customAttributes.forEach(attr => applyCustomAttribute(element, attr.name.split('.'), attr.value));
+    }
+
     vElement.customEvents.forEach(attr => applyCustomEvent(element, attr.name, attr.value, attr.scope, attr.details));
     vElement.children.forEach(vChild => element.appendChild(createElement(vChild)));
 
