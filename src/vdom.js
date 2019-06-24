@@ -110,7 +110,11 @@ function updateElement(parent, newNode, oldNode, index = 0) {
         parent.replaceChild(createElement(newNode), parent.childNodes[index]);
     } else if (newNode.type) {
         if (newNode.type !== 'template' && newNode.type !== 'text') {
-            updateCustomAttributes(parent.childNodes[index], newNode, oldNode);
+            if (newNode.customEvents && newNode.customEvents.length) {
+                parent.replaceChild(createElement(newNode), parent.childNodes[index]);
+            } else {
+                updateCustomAttributes(parent.childNodes[index], newNode, oldNode);
+            }
         }
 
         const newLength = newNode.children.length;
@@ -191,18 +195,19 @@ function createVirtualElement(element, scope = {}, details = {}) {
             if (element.attributes[i].name.match(/#for/g)) {
                 isForNode = true;
                 const forAttr = element.getAttribute('#for').match(/(?:var|let)\s+(\S+)\s+(?:in|of)\s+(\S+)/);
-
                 const iteration = (el, els) => {
                     const index = els.indexOf(el);
                     const clone = element.cloneNode(true);
                     const s = {};
-                    s[forAttr[1]] = els[index];
+                    s[forAttr[1]] = el;
                     s['$index'] = index;
+
                     clone.removeAttribute('#for');
                     replaces.push(createVirtualElement(clone, scope, Object.assign({}, details, s)));
                 }
 
                 details[forAttr[1]] = {}; // For init
+                details['$index'] = null;
                 parseExpression(
                     'for (' + forAttr[0] + ') { iteration(' + forAttr[1] + ', ' + forAttr[2] + '); }',
                     Object.assign({}, details, { iteration }),
@@ -247,10 +252,7 @@ function createElement(vElement) {
         }
     });
 
-    if (vElement.type != 'search-bar-component') {
-        vElement.customAttributes.forEach(attr => applyCustomAttribute(element, attr.name.split('.'), attr.value));
-    }
-
+    vElement.customAttributes.forEach(attr => applyCustomAttribute(element, attr.name.split('.'), attr.value));
     vElement.customEvents.forEach(attr => applyCustomEvent(element, attr.name, attr.value, attr.scope, attr.details));
     vElement.children.forEach(vChild => element.appendChild(createElement(vChild)));
 
