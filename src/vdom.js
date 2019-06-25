@@ -93,6 +93,12 @@ function updateCustomAttributes(element, newNode, oldNode) {
     }
 }
 
+function updateCustomEvents(element, newNode) {
+    if (newNode.customEvents && newNode.customEvents.length) {
+        newNode.customEvents.forEach(attr => applyCustomEvent(element, attr.name, attr.value, attr.scope, attr.details));
+    }
+}
+
 function changed(node1, node2) {
     return (
         (node1.type !== node2.type) ||
@@ -110,11 +116,8 @@ function updateElement(parent, newNode, oldNode, index = 0) {
         parent.replaceChild(createElement(newNode), parent.childNodes[index]);
     } else if (newNode.type) {
         if (newNode.type !== 'template' && newNode.type !== 'text') {
-            if (newNode.customEvents && newNode.customEvents.length) {
-                parent.replaceChild(createElement(newNode), parent.childNodes[index]);
-            } else {
-                updateCustomAttributes(parent.childNodes[index], newNode, oldNode);
-            }
+            updateCustomEvents(parent.childNodes[index], newNode);
+            updateCustomAttributes(parent.childNodes[index], newNode, oldNode);
         }
 
         const newLength = newNode.children.length;
