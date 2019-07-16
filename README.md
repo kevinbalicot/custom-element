@@ -43,6 +43,8 @@ $ npm install --save @kevinbalicot/custom-element
                 return [':host(span) { color: red; }'];
             }
         }
+	    
+	window.customElements.define('my-component', MyComponent);
     </script>
 </body>
 </html>
