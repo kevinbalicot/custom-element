@@ -4,6 +4,9 @@ Tiny library to make custom HTML elements
 
 Live demo [https://jsfiddle.net/kevinbalicot/L08q4k21/](https://jsfiddle.net/kevinbalicot/L08q4k21/)
 
+
+Tests : [![Build Status](https://travis-ci.org/kevinbalicot/custom-element.svg?branch=master)](https://travis-ci.org/kevinbalicot/custom-element)
+
 ## Installation
 
 ```bash
@@ -19,27 +22,27 @@ $ npm install --save @kevinbalicot/custom-element
     <meta charset="utf-8">
     <title>My site</title>
 
-    <script src="/node_modules/@kevinbalicot/custom-element/dist/custom-element.js" charset="utf-8"></script>
+    <script src="/node_modules/@kevinbalicot/custom-element/dist/custom-element.min.js" charset="utf-8"></script>
 </head>
 <body>
     <my-component></my-component>
 
-    <script>
-    class MyComponent extends CustomElement {
-        constructor() {
-            super();
+    <script type="application/javascript">
+        class MyComponent extends CustomElement {
+            constructor() {
+                super();
 
-            this.name = 'Jean';
-        }
+                this.name = 'Jean';
+            }
 
-        static get template() {
-            return '<h1>Hello <span [innerHTML]="this.name"></span> !</h1>';
-        }
+            static get template() {
+                return '<h1>Hello <span [innerHTML]="this.name"></span> !</h1>';
+            }
 
-        static get styles() {
-            return [':host(span) { color: red; }'];
+            static get styles() {
+                return [':host(span) { color: red; }'];
+            }
         }
-    }
     </script>
 </body>
 </html>
@@ -58,12 +61,14 @@ class DemoComponent extends CustomElement {
     }
 
     /**
-    * Call when custom element call connectedCallback (see custom element life cycle)
+    * Call when custom element call connectedCallback (see HTML custom element life cycle)
     */
     onConnected() {
-        this.element('input[name=text]').on('keyup', event => {
+        this.element('input[name=text]').on('input', event => {
             this.text = event.target.value;
-            this.update();
+            this.update(); // Refresh template
+
+            // You can also to use this.update({ text: event.target.value });
         });
     }
 
@@ -102,7 +107,7 @@ class DemoComponent extends CustomElement {
                 this.items.push(input.value);
                 input.value = null;
 
-                this.update('ul');
+                this.update();
             }
         });
     }
@@ -154,8 +159,7 @@ class DemoComponent extends CustomElement {
     }
 
     toggle(value) {
-        this.show = value;
-        this.update();
+        this.update({ show: value });
     }
 
     static get template() {
@@ -187,6 +191,17 @@ class ColorComponent extends CustomElement {
         this.color = '#fff';
     }
 
+    /**
+     * Call every time observed attribute change
+     */
+    onChanges(attributeName, oldValue, newValue) {
+        if ('color' === attributeName) {
+            // this.color is already set with new value, but you can abort and set the old value
+
+            this.update();
+        }
+    }
+
     // Define ouputs
     static get observedAttributes() {
         return ['color'];
@@ -206,8 +221,7 @@ class DemoComponent extends CustomElement {
 
     onConnected() {
         this.element('input[name=color]').on('change', event => {
-            this.color = event.target.value;
-            this.update();
+            this.update({ color: event.target.value });
         });
     }
 
@@ -250,7 +264,7 @@ class MarkdownDecoder {
     }
 }
 
-// Define class is injectable in another class with injects() static
+// Define class is injectable in another class with injects() static method
 class ReadmeLoader extends Injectable {
     constructor(http, markdownDecoder) {
         super();
@@ -264,7 +278,7 @@ class ReadmeLoader extends Injectable {
     }
 
     static get injects() {
-        return [Http, MarkdownDecoder];
+        return [Http, MarkdownDecoder]; // Another services
     }
 }
 
@@ -280,8 +294,7 @@ class ReadmeComponent extends CustomElement {
 
     onConnected() {
         this.readmeLoader.load(this.url).then(content => {
-            this.content = content;
-            this.update();
+            this.update({ content });
         });
     }
 
@@ -290,37 +303,143 @@ class ReadmeComponent extends CustomElement {
     }
 
     static get injects() {
-        return [Http, MarkdownDecoder, ReadmeLoader];
+        return [Http, MarkdownDecoder, ReadmeLoader]; // Need to inject all services
     }
 }
 ```
 
-### Routing
+### Event binding
+
+Sometime to use `AddEventListener` into `onConnected` can't work after the template refreshing, because target element is not the same after the refresh. So instead of `AddEventListener`, please use event binding.
 
 ```javascript
-class HomeComponent extends CustomElement {
-    constructor() {
-        super();
+class MyComponent extends CustomElement {
 
-        this.router = this.get('Router');
+    onClick(event) {
+        // make something with button
     }
 
-    onConnected() {
-        this.router.add([
-            { path: '/', component: 'readme-component', container: this.element('#view-container') },
-            { path: '/demo', component: 'demo-component', container: this.element('#view-container') },
-            { path: '/about', component: 'about-component', container: this.element('#view-container') }
-        ]);
+    onInput(event) {
+        // make something with input
+    }
+
+    onSumbit(event) {
+        event.preventDefault();
+        // make something with form
+    }
+
+    onSelect(event) {
+        // make something with select
     }
 
     static get template() {
-        return '<div id="view-container"></div>';
+        return `
+            <button (click)="this.onClick($event)">Click on me <3</button>
+
+            <form (submit)="this.onSumbit($event)">
+                <input (input)="this.onInput($event)" type="text" name="text">
+                <select (change)="this.onSelect($event)">
+                    <option value="1">One</option>
+                    <option value="2">Two</option>
+                    <option value="3">Three</option>
+                </select>
+            </form>
+        `;
+    }
+}
+```
+
+## API
+
+```javascript
+class CustomElement extends HTMLElement {
+    constructor() {}
+
+    connectedCallback() {
+        // Call this.onConnected()
+    }
+
+    /**
+     * @param {string} name - Attribute name
+     * @param {string|number} oldValue - old attribute value
+     * @param {string|number} newValue - new attribute value
+     */
+    attributeChangedCallback(name, oldValue, newValue) {
+        // Call this.onChanges()
+    }
+
+    disconnectedCallback() {
+        // Call this.onDisconnected()
+    }
+
+    /**
+     * @param {Object} [details={}] - this attributes to update
+     */
+    update(details = {}) {}
+
+    /**
+     * @param {string} key - Get element into container
+     * @return {*}
+     */
+    get(key) {}
+
+    /**
+     * @param {string} key - Key of element to store into container
+     * @param {*} value - Element to store into container
+     * @param {Array<*>} [parameters=[]] - Parameters to inject into element constructor
+     */
+    set(key, value, parameters = []) {}
+
+    /**
+     * @param {string} key - Element key into container
+     * @return {boolean}
+     */
+    has(key) {}
+
+    /**
+     * @param {string} event - Event name to attach at this custom element
+     * @param {function} callback
+     * @param {boolean} [options=false] - Option for AddEventListener function
+     */
+    on(event, callback, options = false) {}
+
+    /**
+     * @param {string} selector - CSS selector to get HTML Element
+     * @param {HTMLElement|null}
+     */
+    element(selector) {}
+
+    /**
+     * @param {string} selector - CSS selector to get a list of HTML Elements
+     * @param {Array<HTMLElement>|[]}
+     */
+    elementAll(selector) {}
+
+    /**
+     * @param {string} event - Event name to emit from this custom element
+     */
+    emit(event) {}
+
+    static get template() {
+        return '<slot></slot>';
     }
 
     static get injects() {
-        return [Router];
+        return [];
+    }
+
+    static get observedAttributes() {
+        return [];
+    }
+
+    static get styles() {
+        return [];
     }
 }
 
-window.customElements.define('home-component', HomeComponent);
+class Injectable {
+	static get injects() {
+		return [];
+	}
+}
 ```
