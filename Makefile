@@ -7,11 +7,13 @@ build-dev: $(DIST_DIR) node_modules
 	$(BIN_DIR)/browserify src/index.js -d -o $(BIN_FILE) -t [ babelify ]
 
 build: build-dev
-	$(BIN_DIR)/browserify src/index.js -t [ babelify ] | $(BIN_DIR)/uglifyjs --keep-fnames -c -o $(BIN_FILE_MIN)
-
+	$(BIN_DIR)/browserify src/index.js -t [ babelify ] | $(BIN_DIR)/uglifyjs -c -o $(BIN_FILE_MIN)
 
 clean:
 	rm -rf ./node_modules && rm -rf $(DIST_DIR)
+
+test: node_modules
+	$(BIN_DIR)/mocha
 
 .PHONY: build build-dev clean
 
