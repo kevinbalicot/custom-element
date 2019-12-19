@@ -26,6 +26,7 @@ class MyComponent extends CustomElement {
         this.text = 'My webpage';
         this.info = false;
         this.items = [];
+        this.object = {};
         this.clicks = 0;
 
         this.attrs = {
@@ -56,8 +57,11 @@ class MyComponent extends CustomElement {
             <div id="div" [innerHTML]="this.text"></div>
             <p #if="this.info">My information banner</p>
             <ul>
-                <li #for="let i of this.items" [innerHTML]="i"></li>
+                <li #for="let i of this.items" [attr.index]="$index" [innerHTML]="i"></li>
             </ul>
+            <ol>
+                <li #for="let key in this.object" [attr.value]="$value" [innerHTML]="key"></li>
+            </ol>
             <button (click)="this.clicks++">Click here</button>
             <a href="">Click on my link</a>
 
@@ -93,14 +97,14 @@ describe('Custom Element', () => {
     it('should be initialize with content', () => {
         const element = window.document.querySelector('my-component');
 
-        assert.equal(element instanceof CustomElement, true);
+        assert.strictEqual(element instanceof CustomElement, true);
 
-        assert.equal(callers.onConnected, 1);
-        assert.equal(callers.onChanges, 0);
-        assert.equal(callers.onDisconnected, 0);
+        assert.strictEqual(callers.onConnected, 1);
+        assert.strictEqual(callers.onChanges, 0);
+        assert.strictEqual(callers.onDisconnected, 0);
 
-        assert.equal(element.element('h1').innerHTML, 'Hello world');
-        assert.equal(element.element('div').innerHTML, element.text);
+        assert.strictEqual(element.element('h1').innerHTML, 'Hello world');
+        assert.strictEqual(element.element('div').innerHTML, element.text);
     });
 
     it('should be initialize with styles', () => {
@@ -114,12 +118,12 @@ describe('Custom Element', () => {
         const element = window.document.querySelector('my-component');
         const div = element.element('#change-attributes');
 
-        assert.equal(div.style.color, element.attrs.color);
-        assert.equal(div.title, element.attrs.title);
-        assert.equal(div.className, element.attrs.className + ' toto');
-        assert.equal(div.classList.contains('toto'), true);
-        assert.equal(div.style.width, element.attrs.width + 'px');
-        assert.equal(div.style.height, element.attrs.height + '%');
+        assert.strictEqual(div.style.color, element.attrs.color);
+        assert.strictEqual(div.title, element.attrs.title);
+        assert.strictEqual(div.className, element.attrs.className + ' toto');
+        assert.strictEqual(div.classList.contains('toto'), true);
+        assert.strictEqual(div.style.width, element.attrs.width + 'px');
+        assert.strictEqual(div.style.height, element.attrs.height + '%');
 
         const expected = {
             color: 'red',
@@ -133,20 +137,20 @@ describe('Custom Element', () => {
         element.attrs = expected;
         element.update();
 
-        assert.equal(div.style.color, expected.color);
-        assert.equal(div.title, expected.title);
-        assert.equal(div.className, expected.className);
-        assert.equal(div.classList.contains('toto'), false);
-        assert.equal(div.style.width, expected.width + 'px');
-        assert.equal(div.style.height, expected.height + '%');
+        assert.strictEqual(div.style.color, expected.color);
+        assert.strictEqual(div.title, expected.title);
+        assert.strictEqual(div.className, expected.className);
+        assert.strictEqual(div.classList.contains('toto'), false);
+        assert.strictEqual(div.style.width, expected.width + 'px');
+        assert.strictEqual(div.style.height, expected.height + '%');
     });
 
     it('should be able to get one element', () => {
         const element = window.document.querySelector('my-component');
 
-        assert.equal(element.element('h1').tagName, 'H1');
-        assert.equal(element.element('#div').tagName, 'DIV');
-        assert.equal(element.element('.update-me-same-time').tagName, 'STRONG');
+        assert.strictEqual(element.element('h1').tagName, 'H1');
+        assert.strictEqual(element.element('#div').tagName, 'DIV');
+        assert.strictEqual(element.element('.update-me-same-time').tagName, 'STRONG');
     });
 
     it('should be able to get some elements', () => {
@@ -154,19 +158,19 @@ describe('Custom Element', () => {
         const elements = element.elementAll('.update-me-same-time');
         const expected = ['STRONG', 'I'];
 
-        elements.forEach((el, index) => assert.equal(el.tagName, expected[index]));
+        elements.forEach((el, index) => assert.strictEqual(el.tagName, expected[index]));
     });
 
     it('should be able to update content', () => {
         const element = window.document.querySelector('my-component');
         const expected = 'I changed my webpage.';
 
-        assert.equal(element.element('div').innerHTML, element.text);
+        assert.strictEqual(element.element('div').innerHTML, element.text);
 
         element.text = expected;
         element.update();
 
-        assert.equal(element.element('div').innerHTML, expected);
+        assert.strictEqual(element.element('div').innerHTML, expected);
     });
 
     it('should be able to update content with details', () => {
@@ -175,8 +179,8 @@ describe('Custom Element', () => {
 
         element.update({ text: expected });
 
-        assert.equal(element.element('div').innerHTML, expected);
-        assert.equal(element.text, expected);
+        assert.strictEqual(element.element('div').innerHTML, expected);
+        assert.strictEqual(element.text, expected);
     });
 
     it('should be able to update some elements', () => {
@@ -188,15 +192,15 @@ describe('Custom Element', () => {
         element.text = init;
         element.update();
 
-        assert.equal(element.element('strong').innerHTML, element.text);
-        assert.equal(element.element('i').innerHTML, element.text);
+        assert.strictEqual(element.element('strong').innerHTML, element.text);
+        assert.strictEqual(element.element('i').innerHTML, element.text);
 
         element.text = expected;
         element.update();
 
-        assert.equal(element.element('strong').innerHTML, expected);
-        assert.equal(element.element('i').innerHTML, expected);
-        assert.equal(element.element('div').innerHTML, expected);
+        assert.strictEqual(element.element('strong').innerHTML, expected);
+        assert.strictEqual(element.element('i').innerHTML, expected);
+        assert.strictEqual(element.element('div').innerHTML, expected);
     });
 
     it('should be able to change observed attributes', () => {
@@ -208,15 +212,15 @@ describe('Custom Element', () => {
 
         element.setAttribute('foo', expected);
 
-        assert.equal(callers.onChanges, 1);
+        assert.strictEqual(callers.onChanges, 1);
         assert.strictEqual(element.getAttribute('foo'), expected);
         assert.strictEqual(element.foo, expected);
 
         element.setAttribute('foo', expected2);
 
-        assert.equal(callers.onChanges, 2);
+        assert.strictEqual(callers.onChanges, 2);
         assert.strictEqual(element.getAttribute('foo'), expected2);
-        assert.equal(typeof element.foo === 'object', true);
+        assert.strictEqual(typeof element.foo === 'object', true);
         assert.strictEqual(element.foo.foo, JSON.parse(expected2).foo);
     });
 
@@ -235,39 +239,67 @@ describe('Custom Element', () => {
         const element = window.document.querySelector('my-component');
         const expected = 1;
 
-        assert.equal(element.element('ul').children.length, 0);
+        assert.strictEqual(element.element('ul').children.length, 0);
 
         element.items.push(expected);
         element.update();
 
-        assert.equal(element.element('ul').children.length, 1);
+        assert.strictEqual(element.element('ul').children.length, 1);
         assert.strictEqual(element.element('ul').children[0].innerHTML, String(expected));
+        assert.strictEqual(element.element('ul').children[0].getAttribute('index'), String(0));
 
         [1,2,3,4,5].forEach(i => {
             element.items.push(i);
-            assert.equal(element.element('ul').children.length, element.items.length - 1);
+            assert.strictEqual(element.element('ul').children.length, element.items.length - 1);
             element.update();
-            assert.equal(element.element('ul').children.length, element.items.length);
+            assert.strictEqual(element.element('ul').children.length, element.items.length);
         });
 
         element.items.splice(0, 1);
-        assert.equal(element.element('ul').children.length, element.items.length + 1);
+        assert.strictEqual(element.element('ul').children.length, element.items.length + 1);
         element.update();
-        assert.equal(element.element('ul').children.length, element.items.length);
+        assert.strictEqual(element.element('ul').children.length, element.items.length);
+    });
+
+    it('should be able to add or remove object parameter with #for', () => {
+        const element = window.document.querySelector('my-component');
+        const expectedKey = 'foo';
+        const expectedValue = 'bar';
+
+        assert.strictEqual(element.element('ol').children.length, 0);
+
+        element.object[expectedKey] = expectedValue;
+        element.update();
+
+        assert.strictEqual(element.element('ol').children.length, 1);
+        assert.strictEqual(element.element('ol').children[0].innerHTML, String(expectedKey));
+        assert.strictEqual(element.element('ol').children[0].getAttribute('value'), String(expectedValue));
+
+        [
+            { k: "1", v: "a" },
+            { k: "2", v: "b" },
+            { k: "3", v: "c" },
+            { k: "4", v: "d" }
+        ].forEach(i => {
+            element.object[i.k] = i.v;
+            assert.strictEqual(element.element('ol').children.length, Object.keys(element.object).length - 1);
+            element.update();
+            assert.strictEqual(element.element('ol').children.length, Object.keys(element.object).length);
+        });
     });
 
     it('should be able to add events listeners with method and into template', done => {
         const element = window.document.querySelector('my-component');
 
-        assert.equal(element.clicks, 0);
+        assert.strictEqual(element.clicks, 0);
 
         element.element('a').on('click', event => {
-            assert.deepEqual(element.element('a'), event.target);
+            assert.deepStrictEqual(element.element('a'), event.target);
             done();
         });
 
         element.element('button').click();
-        assert.equal(element.clicks, 1);
+        assert.strictEqual(element.clicks, 1);
         element.element('a').click();
     });
 });
