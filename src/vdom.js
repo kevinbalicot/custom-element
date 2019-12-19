@@ -199,19 +199,16 @@ function createVirtualElement(element, scope = {}, details = {}) {
                 isForNode = true;
                 const forAttr = element.getAttribute('#for').match(/(?:var|let)\s+(\S+)\s+(?:in|of)\s+(\S+)/);
                 const iteration = (el, els) => {
-                    const s = {};
                     if (Array.isArray(els)) {
-                        const index = els.indexOf(el);
-                        s['$index'] = index;
+                        details['$index'] = els.indexOf(el);
                     } else {
-                        s['$value'] = els[el];
+                        details['$value'] = els[el];
                     }
+                    details[forAttr[1]] = el;
 
                     const clone = element.cloneNode(true);
-                    s[forAttr[1]] = el;
-
                     clone.removeAttribute('#for');
-                    replaces.push(createVirtualElement(clone, scope, Object.assign({}, details, s)));
+                    replaces.push(createVirtualElement(clone, scope, details));
                 };
 
                 details[forAttr[1]] = {}; // For init
