@@ -5,7 +5,9 @@ const VDOM = {
     addCustomAttribute: function(selector, callback) {
         this.customAttributes.push({ selector, callback });
     },
-    render: render
+    createVirtualDOM: createVirtualDOM,
+    updateElement: updateElement,
+    parseExpression: parseExpression,
 };
 
 function flatten(elements) {
@@ -22,6 +24,13 @@ function flatten(elements) {
     return result;
 }
 
+function changed(node1, node2) {
+    return (
+        (node1.type !== node2.type) ||
+        (node1.type === 'text' && node2.type === 'text' && node1.data !== node2.data)
+    );
+}
+
 function parseExpression(expression, parameters = {}, scope = {}) {
     parameters = Object.assign({}, parameters);
     if (scope._container) {
@@ -36,13 +45,9 @@ function parseExpression(expression, parameters = {}, scope = {}) {
     }
 }
 
-function applyCustomAttribute(element, attributeNames, value) {
-    for (let customAttribute of VDOM.customAttributes) {
-        const { selector, callback } = customAttribute;
-        if (attributeNames[0] === selector) {
-            return callback(element, value, attributeNames);
-        }
-    }
+function applyCustomAttribute(element, attribute, scope, details = {}) {
+    const attributeNames = attribute.name.split('.');
+    let value = parseExpression(`return ${attribute.value}`, Object.assign({}, element.dataset, details), scope);
 
     switch (attributeNames[0]) {
         case 'style':
@@ -61,6 +66,9 @@ function applyCustomAttribute(element, attributeNames, value) {
             }
             element.setAttribute(attributeNames[1], value);
             break;
+        case 'innerhtml':
+            element.innerHTML = value;
+            break;
         default:
             if (element[attributeNames[0]]) {
                 element[attributeNames[0]] = value;
@@ -72,52 +80,51 @@ function applyCustomAttribute(element, attributeNames, value) {
     }
 }
 
-function applyCustomEvent(element, name, value, scope, details = {}) {
-    element.removeEventListener(name, element[`_${name}Handler`]);
-    element[`_${name}Handler`] = $event => parseExpression(value, Object.assign({ $event }, element.dataset, details), scope);
-    element.addEventListener(name, element[`_${name}Handler`]);
-}
-
-function updateCustomAttributes(element, newNode, oldNode) {
-    const attrNames = new Set();
-    newNode.customAttributes.forEach(attr => attrNames.add(attr.name));
-    oldNode.customAttributes.forEach(attr => attrNames.add(attr.name));
-
-    for (let attribute of attrNames) {
-        const newAttr = newNode.customAttributes.find(attr => attr.name === attribute);
-        const oldAttr = oldNode.customAttributes.find(attr => attr.name === attribute);
-
-        if (!oldAttr || !newAttr || newAttr.value !== oldAttr.value) { // NO SURE
-            applyCustomAttribute(element, newAttr.name.split('.'), newAttr.value);
+function applyCustomEvent(element, attribute, scope, details = {}) {
+    const attributeNames = attribute.name.split('.');
+    element.removeEventListener(attributeNames[0], element[`_${attributeNames[0]}Handler`]);
+    element[`_${attributeNames[0]}Handler`] = $event => {
+        if (attributeNames[1] === 'prevent') {
+            $event.preventDefault();
         }
+
+        if (attributeNames[1] === 'stop') {
+            $event.stopPropagation();
+        }
+
+        parseExpression(attribute.value, Object.assign({ $event }, element.dataset, details), scope);
+
+        if (attributeNames[1] === 'once') {
+            element.removeEventListener(attributeNames[0], element[`_${attributeNames[0]}Handler`]);
+        }
+    };
+    element.addEventListener(attributeNames[0], element[`_${attributeNames[0]}Handler`]);
+}
+
+function updateCustomAttributes(element, vElement, scope, details = {}) {
+    for (let attribute of vElement.customAttributes) {
+        applyCustomAttribute(element, attribute, scope, Object.assign({}, details, vElement.scope));
     }
 }
 
-function updateCustomEvents(element, newNode) {
-    if (newNode.customEvents && newNode.customEvents.length) {
-        newNode.customEvents.forEach(attr => applyCustomEvent(element, attr.name, attr.value, attr.scope, attr.details));
+function updateCustomEvents(element, vElement, scope, details = {}) {
+    for (let attribute of vElement.customEvents) {
+        applyCustomEvent(element, attribute, scope, Object.assign({}, details, vElement.scope));
     }
 }
 
-function changed(node1, node2) {
-    return (
-        (node1.type !== node2.type) ||
-        (node1.type === 'text' && node2.type === 'text' && node1.data !== node2.data)
-    );
-}
-
-function updateElement(parent, newNode, oldNode, index = 0) {
+function updateElement(parent, newNode, oldNode, scope, details = {}, index = 0) {
     if (!oldNode) {
-        parent.appendChild(createElement(newNode));
+        parent.appendChild(createElement(newNode, scope, details));
     } else if (!newNode) {
         //parent.removeChild(parent.childNodes[index]);
         parent.replaceChild(document.createTextNode(''), parent.childNodes[index]);
     } else if (changed(newNode, oldNode)) {
-        parent.replaceChild(createElement(newNode), parent.childNodes[index]);
+        parent.replaceChild(createElement(newNode, scope, details), parent.childNodes[index]);
     } else if (newNode.type) {
         if (newNode.type !== 'template' && newNode.type !== 'text') {
-            updateCustomEvents(parent.childNodes[index], newNode);
-            updateCustomAttributes(parent.childNodes[index], newNode, oldNode);
+            updateCustomEvents(parent.childNodes[index], newNode, scope, details);
+            updateCustomAttributes(parent.childNodes[index], newNode, scope, details);
         }
 
         const newLength = newNode.children.length;
@@ -127,17 +134,12 @@ function updateElement(parent, newNode, oldNode, index = 0) {
                 newNode.type === 'template' ? parent : parent.childNodes[index],
                 newNode.children[i],
                 oldNode.children[i],
+                scope,
+                details,
                 i
             );
         }
     }
-}
-
-function parseHtml(html) {
-    const template = document.createElement("template");
-    template.innerHTML = html.trim();
-
-    return template.content;
 }
 
 function createVirtualDOM(element, scope = {}, details = {}) {
@@ -156,34 +158,39 @@ function createVirtualElement(element, scope = {}, details = {}) {
         return { type: 'text', data: element.data, children: [] };
     }
 
-    let isForNode = false;
     const attributesToDelete = [];
     const replaces = [];
-    if (!element._customAttributes) {
-        element._customAttributes = [];
-    }
 
-    if (!element._customEvents) {
-        element._customEvents = [];
+    const vElement = {
+        customAttributes: [],
+        customEvents: [],
+        type: String(element.tagName).toLowerCase(),
+        _scope: Object.assign({}, details),
+        element: null,
+        dataset: element.dataset,
+
+        get scope() {
+            return this._scope;
+        }
     }
 
     if (element.attributes) {
         for (let i = 0; i < element.attributes.length; i++) {
             if (element.attributes[i].name.match(/\[(\S+)\]/g)) {
-                element._customAttributes.push({
+                vElement.customAttributes.push({
                     name: element.attributes[i].name.replace('[', '').replace(']', ''),
-                    value: parseExpression('return ' + element.attributes[i].value, Object.assign({}, element.dataset, details), scope)
+                    value: element.attributes[i].value,
                 });
+
                 attributesToDelete.push(element.attributes[i].name);
             }
 
             if (element.attributes[i].name.match(/\((\S+)\)/g)) {
-                element._customEvents.push({
+                vElement.customEvents.push({
                     name: element.attributes[i].name.replace('(', '').replace(')', ''),
                     value: element.attributes[i].value,
-                    details,
-                    scope
                 });
+
                 attributesToDelete.push(element.attributes[i].name);
             }
 
@@ -192,61 +199,57 @@ function createVirtualElement(element, scope = {}, details = {}) {
                 if (!parseExpression('return ' + ifAttr, details, scope)) {
                     return { type: 'text', data: '', children: [] };
                 }
+
                 attributesToDelete.push(element.attributes[i].name);
             }
 
             if (element.attributes[i].name.match(/#for/g)) {
-                isForNode = true;
                 const forAttr = element.getAttribute('#for').match(/(?:var|let)\s+(\S+)\s+(?:in|of)\s+(\S+)/);
+
                 const iteration = (el, els) => {
                     if (Array.isArray(els)) {
                         details['$index'] = els.indexOf(el);
                     } else {
-                        details['$value'] = els[el];
+                        details['$prop'] = els[el];
                     }
                     details[forAttr[1]] = el;
 
                     const clone = element.cloneNode(true);
                     clone.removeAttribute('#for');
+
                     replaces.push(createVirtualElement(clone, scope, details));
                 };
 
-                details[forAttr[1]] = {}; // For init
-                details['$index'] = null;
-                details['$value'] = null;
                 parseExpression(
                     'for (' + forAttr[0] + ') { iteration(' + forAttr[1] + ', ' + forAttr[2] + '); }',
                     Object.assign({}, details, { iteration }),
                     scope
                 );
-                attributesToDelete.push(element.attributes[i].name);
+
+                return replaces;
             }
         }
     }
 
     attributesToDelete.forEach(name => element.removeAttribute(name));
 
-    let innerHTMLAttr; // Dirty
-    if (innerHTMLAttr = element._customAttributes.find(attr => attr.name === 'innerhtml')) {
-        element.innerHTML = innerHTMLAttr.value;
+    vElement.attributes = Array.from(element.attributes);
+    vElement.children = element.tagName.includes('-') ? [] : flatten(Array.from(element.childNodes).map(node => createVirtualElement(node, scope, details)));
+
+    if (element.tagName.includes('-')) {
+        vElement.element = element;
     }
 
-    if (isForNode) {
-        return replaces.length ? replaces : null;
-    }
-
-    return {
-        type: String(element.tagName).toLowerCase(),
-        attributes: Array.from(element.attributes),
-        customAttributes: element._customAttributes,
-        customEvents: element._customEvents,
-        children: flatten(Array.from(element.childNodes).map(node => createVirtualElement(node, scope, details)))
-    };
+    return vElement;
 }
 
-function createElement(vElement) {
+function createElement(vElement, scope, details) {
     if (vElement.type === 'text') {
         return document.createTextNode(vElement.data);
+    }
+
+    if (vElement.element) {
+        return vElement.element;
     }
 
     const element = document.createElement(vElement.type);
@@ -258,19 +261,19 @@ function createElement(vElement) {
         }
     });
 
-    vElement.customAttributes.forEach(attr => applyCustomAttribute(element, attr.name.split('.'), attr.value));
-    vElement.customEvents.forEach(attr => applyCustomEvent(element, attr.name, attr.value, attr.scope, attr.details));
-    vElement.children.forEach(vChild => element.appendChild(createElement(vChild)));
+    for (let attribute of vElement.customAttributes) {
+        updateCustomAttributes(element, vElement, scope, details);
+    }
+
+    for (let attribute of vElement.customEvents) {
+        updateCustomEvents(element, vElement, scope, details);
+    }
+
+    for (let vChild of vElement.children) {
+        element.appendChild(createElement(vChild, scope, details));
+    }
 
     return element;
-}
-
-function render(parent, html, scope = {}, details = {}) {
-    updateElement(
-        parent,
-        createVirtualDOM(parseHtml(html), scope, details),
-        createVirtualDOM(parent, scope, details)
-    );
 }
 
 module.exports = VDOM;

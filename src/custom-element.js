@@ -1,5 +1,6 @@
 const { container } = require('./di');
-const { render } = require('./vdom');
+
+const TreeNode = require('./nodes/tree-node');
 
 class CustomElement extends HTMLElement {
     constructor() {
@@ -8,6 +9,7 @@ class CustomElement extends HTMLElement {
         this._init = false;
         this._container = container;
         this._style = document.createElement('style');
+        this._vdom = new TreeNode();
 
         this.constructor.injects.forEach(inject => {
             this._container.add(inject, inject, inject.injects || []);
@@ -24,7 +26,23 @@ class CustomElement extends HTMLElement {
             this._init = true;
         }
 
-        this.update();
+        let html = this.constructor.template;
+        if (typeof this.constructor.template === 'string') {
+            html = `${this._style.outerHTML}${this.constructor.template}`;
+        }
+
+        this._vdom.render(this.shadowRoot, html, this);
+
+        this.all('slot').forEach(slot => {
+            slot.addEventListener('slotchange', () => {
+                slot._vdom = new TreeNode();
+                for (let node of slot.assignedNodes()) {
+                    if (!(node instanceof Text)) {
+                        slot._vdom.render(node, node.outerHTML, this);
+                    }
+                }
+            });
+        });
 
         if (this.onConnected) {
             this.onConnected();
@@ -65,7 +83,13 @@ class CustomElement extends HTMLElement {
         }
 
         if (this.shadowRoot) {
-            render(this.shadowRoot, `${this._style.outerHTML}${this.constructor.template}`, this);
+            this._vdom.update(this);
+
+            this.all('slot').forEach(slot => {
+                for (let node of slot.assignedNodes()) {
+                    slot._vdom.update(this);
+                }
+            });
         }
     }
 
@@ -88,6 +112,11 @@ class CustomElement extends HTMLElement {
     }
 
     element(selector) {
+        console.log('Method element() is deprecated, use el() instead.');
+        return this.el(selector);
+    }
+
+    el(selector) {
         const el = this.shadowRoot.querySelector(selector);
 
         if (el && !el.on) {
@@ -98,6 +127,11 @@ class CustomElement extends HTMLElement {
     }
 
     elementAll(selector) {
+        console.log('Method elementAll() is deprecated, use all() instead.');
+        return this.all(selector);
+    }
+
+    all(selector) {
         const els = this.shadowRoot.querySelectorAll(selector);
 
         Array.from(els).forEach(el => {
@@ -130,4 +164,4 @@ class CustomElement extends HTMLElement {
     }
 }
 
-module.exports = { CustomElement };
+module.exports = CustomElement;
