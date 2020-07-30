@@ -1,5 +1,5 @@
 import { Injectable } from './di';
-import { CustomElement } from './custom-element';
+import CustomElement from './custom-element';
 import VDOM from './vdom';
 
 window.CustomElement = CustomElement;
