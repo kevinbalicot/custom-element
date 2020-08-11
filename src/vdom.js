@@ -248,11 +248,13 @@ function createElement(vElement, scope, details) {
         return document.createTextNode(vElement.data);
     }
 
+    let element;
     if (vElement.element) {
-        return vElement.element;
+        element = vElement.element;
+    } else {
+        element = document.createElement(vElement.type);
     }
 
-    const element = document.createElement(vElement.type);
     vElement.attributes.forEach(attr => {
         try {
             element.setAttribute(attr.name, attr.value)
