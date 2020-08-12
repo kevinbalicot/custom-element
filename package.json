@@ -15,12 +15,13 @@
   "author": "Kevin Balicot <kevinbalicot@gmail.com>",
   "license": "MIT",
   "devDependencies": {
-    "@babel/core": "^7.2.0",
-    "@babel/preset-env": "^7.2.0",
+    "@babel/core": "^7.11.1",
+    "@babel/preset-env": "^7.11.0",
     "babelify": "^10.0.0",
-    "browserify": "^16.2.3",
+    "browserify": "^16.5.2",
     "jsdom-wc": "^11.0.0-alpha-1",
     "mocha": "^5.2.0",
-    "uglify-js": "^3.4.9"
+    "uglify-js": "^3.10.1",
+    "watchify": "^3.11.1"
   }
 }
