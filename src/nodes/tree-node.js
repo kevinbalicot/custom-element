@@ -33,6 +33,12 @@ class TreeNode {
         this.oldVirtualDom = createVirtualDOM(this.root, scope, details);
         this.newVirtualDom = createVirtualDOM(this.html.content, scope, details);
 
+        // special case, deal with it ;)
+        if (this.root.assignedSlot) {
+            this.oldVirtualDom.children = [];
+            this.root.innerHTML = null;
+        }
+
         updateElement(this.root, this.newVirtualDom, this.oldVirtualDom, scope, details);
     }
 

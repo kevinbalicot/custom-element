@@ -222,7 +222,7 @@ class DemoComponent extends CustomElement {
     }
 
     onConnected() {
-        this.element('input[name=color]').on('change', event => {
+        this.el('input[name=color]').on('change', event => {
             this.update({ color: event.target.value });
         });
     }
@@ -244,7 +244,7 @@ class DemoComponent extends CustomElement {
 }
 
 window.customElements.define('color-component', ColorComponent);
-window.customElements.define('home-component', HomeComponent);
+window.customElements.define('demo-component', DemoComponent);
 ```
 
 ### Container and Injectable services
@@ -318,6 +318,7 @@ Sometime to use `AddEventListener` into `onConnected` can't work after the templ
 class MyComponent extends CustomElement {
 
     onClick(event) {
+        // No need to use event.stopPropagation() with (*.stop)
         // make something with button
     }
 
@@ -326,7 +327,7 @@ class MyComponent extends CustomElement {
     }
 
     onSumbit(event) {
-        event.preventDefault();
+        // No need to use event.preventDefault() with (*.prevent)
         // make something with form
     }
 
@@ -336,9 +337,9 @@ class MyComponent extends CustomElement {
 
     static get template() {
         return `
-            <button (click)="this.onClick($event)">Click on me <3</button>
+            <button (click.stop)="this.onClick($event)">Click on me <3</button>
 
-            <form (submit)="this.onSumbit($event)">
+            <form (submit.prevent)="this.onSumbit($event)">
                 <input (input)="this.onInput($event)" type="text" name="text">
                 <select (change)="this.onSelect($event)">
                     <option value="1">One</option>
@@ -349,6 +350,45 @@ class MyComponent extends CustomElement {
         `;
     }
 }
+```
+### Slots
+
+You can use slot system, explanation on [MDN web doc](https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_templates_and_slots).
+
+```javascript
+class ChildComponent extends CustomElement {
+    constructor() {
+        super();
+        this.childParam = 'child';
+    }
+   
+    static get template() {
+        return `
+            <span [innerHTML]="this.childParam"></span>
+            <slot name="title">Default title</slot>
+            <slot>Default content</slot>
+        `;
+    }
+}
+
+window.customElements.define('child-component', ChildComponent);
+
+class ParentComponent extends CustomElement {
+    static get template() {
+        return `
+            <child-component>
+                <h4 slot="title">Override default title of child component</h4>
+                <ul>
+                    <li>Override default content of child component</li>
+                    <li>Can get child scope <span [innerHTML]="this.childParam"></span></li>
+                    <li>But we can always get parent scope <span [innerHTML]="parent.parentParam"></span></li>
+                </ul>
+            </child-component>
+        `;
+    }
+}
+
+window.customElements.define('parent-component', ChildComponent);
 ```
 
 ## API
@@ -407,15 +447,15 @@ class CustomElement extends HTMLElement {
 
     /**
      * @param {string} selector - CSS selector to get HTML Element
-     * @param {HTMLElement|null}
+     * @param {HTMLElement|null}
      */
-    element(selector) {}
+    el(selector) {}
 
     /**
      * @param {string} selector - CSS selector to get a list of HTML Elements
-     * @param {Array<HTMLElement>|[]}
+     * @param {Array<HTMLElement>|[]}
      */
-    elementAll(selector) {}
+    all(selector) {}
 
     /**
      * @param {string} event - Event name to emit from this custom element

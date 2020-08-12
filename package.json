@@ -19,7 +19,7 @@
     "@babel/preset-env": "^7.11.0",
     "babelify": "^10.0.0",
     "browserify": "^16.5.2",
-    "jsdom-wc": "^11.0.0-alpha-1",
+    "jsdom": "^16.4.0",
     "mocha": "^5.2.0",
     "uglify-js": "^3.10.1",
     "watchify": "^3.11.1"

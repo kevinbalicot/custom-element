@@ -31,14 +31,19 @@ class CustomElement extends HTMLElement {
             html = `${this._style.outerHTML}${this.constructor.template}`;
         }
 
-        this._vdom.render(this.shadowRoot, html, this);
+        let details = {};
+        if (this.parentNode instanceof ShadowRoot) {
+            details = { parent: this.parentNode.host };
+        }
+
+        this._vdom.render(this.shadowRoot, html, this, details);
 
         this.all('slot').forEach(slot => {
             slot.addEventListener('slotchange', () => {
                 slot._vdom = new TreeNode();
                 for (let node of slot.assignedNodes()) {
                     if (!(node instanceof Text)) {
-                        slot._vdom.render(node, node.outerHTML, this);
+                        slot._vdom.render(node, node.innerHTML, this, { parent: this.parentNode.host });
                     }
                 }
             });
@@ -83,11 +88,16 @@ class CustomElement extends HTMLElement {
         }
 
         if (this.shadowRoot) {
-            this._vdom.update(this);
+            let details = {};
+            if (this.parentNode instanceof ShadowRoot) {
+                details = { parent: this.parentNode.host };
+            }
+
+            this._vdom.update(this, details);
 
             this.all('slot').forEach(slot => {
                 for (let node of slot.assignedNodes()) {
-                    slot._vdom.update(this);
+                    slot._vdom.update(this, { parent: this.parentNode.host });
                 }
             });
         }

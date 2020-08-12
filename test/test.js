@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { JSDOM } = require('jsdom-wc');
+const { JSDOM } = require('jsdom');
 
 const callers = {
     onConnected: 0,
@@ -15,6 +15,8 @@ Object.assign(global, {
     HTMLTemplateElement: window.HTMLTemplateElement,
     customElements: window.customElements,
     CustomEvent: window.CustomEvent,
+    Text: window.Text,
+    ShadowRoot: window.ShadowRoot,
     window,
 });
 
@@ -56,7 +58,7 @@ class MyComponent extends CustomElement {
         return `
             <h1>Hello world</h1>
             <div id="div" [innerHTML]="this.text"></div>
-            <p #if="this.info">My information banner</p>
+            <p class="conditional" #if="this.info">My information banner</p>
             <ul>
                 <li #for="let i of this.items" [attr.index]="$index" [innerHTML]="i"></li>
             </ul>
@@ -77,6 +79,11 @@ class MyComponent extends CustomElement {
                 [style.width.px]="this.attrs.width"
                 [style.height.%]="this.attrs.height">
             </div>
+
+            <my-sub-component>
+                <h4 slot="title">My title</h4>
+                <p>My content</p>
+            </my-sub-component>
         `;
     }
 
@@ -89,9 +96,26 @@ class MyComponent extends CustomElement {
     }
 }
 
+class MySubComponent extends CustomElement {
+    constructor() {
+        super();
+
+        this.childParam = 'child content';
+    }
+
+    static get template() {
+        return `
+            <span [innerHTML]="this.childParam"></span>
+            <slot name="title">Default title</slot>
+            <slot>Default content</slot>
+        `;
+    }
+}
+
 describe('Custom Element', () => {
     before(() => {
         window.customElements.define('my-component', MyComponent);
+        window.customElements.define('my-sub-component', MySubComponent);
         window.document.body.innerHTML = '<my-component></my-component>';
     });
 
@@ -228,12 +252,12 @@ describe('Custom Element', () => {
     it('should be able to display or remove HTML element with #if', () => {
         const element = window.document.querySelector('my-component');
 
-        assert(!element.el('p'));
+        assert(!element.el('.conditional'));
 
         element.info = true;
         element.update();
 
-        assert(element.el('p'));
+        assert(element.el('.conditional'));
     });
 
     it('should be able to add or remove HTML elements with #for', () => {
@@ -302,5 +326,18 @@ describe('Custom Element', () => {
         element.el('button').click();
         assert.strictEqual(element.clicks, 1);
         element.el('a').click();
+    });
+
+    it('should be able to use slot system', done => {
+        const element = window.document.querySelector('my-component');
+        const subElement = element.el('my-sub-component');
+
+        assert.notEqual(subElement.children[0].innerHTML, 'Default title');
+        assert.strictEqual(subElement.children[0].innerHTML, 'My title');
+
+        assert.notEqual(subElement.children[1].innerHTML, subElement.childParam);
+        assert.strictEqual(subElement.children[1].innerHTML, 'My content');
+
+        done();
     });
 });
