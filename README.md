@@ -381,7 +381,7 @@ class ParentComponent extends CustomElement {
                 <ul>
                     <li>Override default content of child component</li>
                     <li>Can get child scope <span [innerHTML]="this.childParam"></span></li>
-                    <li>But we can always get parent scope <span [innerHTML]="parent.parentParam"></span></li>
+                    <li>But we can always get parent scope <span [innerHTML]="$parent.parentParam"></span></li>
                 </ul>
             </child-component>
         `;
@@ -461,6 +461,16 @@ class CustomElement extends HTMLElement {
      * @param {string} event - Event name to emit from this custom element
      */
     emit(event) {}
+
+    /**
+     * @return {CustomElement|null} Return CustomElement parent is exists. $parent into template
+     */
+    get parent() {}
+
+    /**
+     * @return {CustomElement} Return the top level of CustomElement tree. $root into template
+     */
+    get root() {}
 
     static get template() {
         return '<slot></slot>';

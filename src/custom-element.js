@@ -31,19 +31,14 @@ class CustomElement extends HTMLElement {
             html = `${this._style.outerHTML}${this.constructor.template}`;
         }
 
-        let details = {};
-        if (this.parentNode instanceof ShadowRoot) {
-            details = { parent: this.parentNode.host };
-        }
-
-        this._vdom.render(this.shadowRoot, html, this, details);
+        this._vdom.render(this.shadowRoot, html, this, { $parent: this.parent, $root: this.root });
 
         this.all('slot').forEach(slot => {
             slot.addEventListener('slotchange', () => {
                 slot._vdom = new TreeNode();
                 for (let node of slot.assignedNodes()) {
                     if (!(node instanceof Text)) {
-                        slot._vdom.render(node, node.innerHTML, this, { parent: this.parentNode.host });
+                        slot._vdom.render(node, node.innerHTML, this, { $parent: this.parent, $root: this.root });
                     }
                 }
             });
@@ -88,16 +83,11 @@ class CustomElement extends HTMLElement {
         }
 
         if (this.shadowRoot) {
-            let details = {};
-            if (this.parentNode instanceof ShadowRoot) {
-                details = { parent: this.parentNode.host };
-            }
-
-            this._vdom.update(this, details);
+            this._vdom.update(this, { $parent: this.parent, $root: this.root });
 
             this.all('slot').forEach(slot => {
                 for (let node of slot.assignedNodes()) {
-                    slot._vdom.update(this, { parent: this.parentNode.host });
+                    slot._vdom.update(this, { $parent: this.parent, $root: this.root });
                 }
             });
         }
@@ -155,6 +145,24 @@ class CustomElement extends HTMLElement {
 
     emit(event) {
         return this.shadowRoot.dispatchEvent(event);
+    }
+
+    get parent() {
+        let parent = this;
+        do {
+            parent = parent.parentNode;
+        } while (!(parent instanceof ShadowRoot) && !!parent.parentNode);
+
+        return parent instanceof ShadowRoot ? parent.host : null;
+    }
+
+    get root() {
+        let root = this;
+        while (root.parent) {
+            root = root.parent;
+        }
+
+        return root;
     }
 
     static get template() {
