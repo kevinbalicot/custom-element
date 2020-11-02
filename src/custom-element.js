@@ -86,7 +86,7 @@ class CustomElement extends HTMLElement {
             this._vdom.update(this, { $parent: this.parent, $root: this.root });
 
             this.all('slot').forEach(slot => {
-                for (let node of slot.assignedNodes()) {
+                if (slot._vdom) {
                     slot._vdom.update(this, { $parent: this.parent, $root: this.root });
                 }
             });

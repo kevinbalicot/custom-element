@@ -102,8 +102,13 @@ function applyCustomEvent(element, attribute, scope, details = {}) {
 }
 
 function updateCustomAttributes(element, vElement, scope, details = {}) {
-    for (let attribute of vElement.customAttributes) {
-        applyCustomAttribute(element, attribute, scope, Object.assign({}, details, vElement.scope));
+    for (let attribute of vElement.customAttributes) {
+        const customAttribute = VDOM.customAttributes.find(({ selector }) => selector === attribute.name);
+        if (customAttribute) {
+            customAttribute.callback(attribute, element, vElement, scope, details);
+        } else {
+            applyCustomAttribute(element, attribute, scope, Object.assign({}, details, vElement.scope));
+        }
     }
 }
 
@@ -115,7 +120,11 @@ function updateCustomEvents(element, vElement, scope, details = {}) {
 
 function updateElement(parent, newNode, oldNode, scope, details = {}, index = 0) {
     if (!oldNode) {
-        parent.appendChild(createElement(newNode, scope, details));
+        if (parent.childNodes[index]) {
+            parent.replaceChild(createElement(newNode, scope, details), parent.childNodes[index]);
+        } else {
+            parent.appendChild(createElement(newNode, scope, details));
+        }
     } else if (!newNode) {
         //parent.removeChild(parent.childNodes[index]);
         parent.replaceChild(document.createTextNode(''), parent.childNodes[index]);
@@ -192,6 +201,17 @@ function createVirtualElement(element, scope = {}, details = {}) {
                 });
 
                 attributesToDelete.push(element.attributes[i].name);
+            }
+
+            for (let customAttribute of VDOM.customAttributes) {
+                if (element.attributes[i].name === customAttribute.selector) {
+                    vElement.customAttributes.push({
+                        name: element.attributes[i].name,
+                        value: element.attributes[i].value,
+                    });
+
+                    attributesToDelete.push(element.attributes[i].name);
+                }
             }
 
             if (element.attributes[i].name.match(/#if/g)) {
@@ -278,4 +298,17 @@ function createElement(vElement, scope, details) {
     return element;
 }
 
-module.exports = VDOM;
+module.exports = {
+    flatten,
+    changed,
+    parseExpression,
+    applyCustomAttribute,
+    applyCustomEvent,
+    updateCustomAttributes,
+    updateCustomEvents,
+    updateElement,
+    createVirtualDOM,
+    createVirtualElement,
+    createElement,
+    VDOM,
+};
