@@ -15,6 +15,7 @@ Object.assign(global, {
     HTMLTemplateElement: window.HTMLTemplateElement,
     customElements: window.customElements,
     CustomEvent: window.CustomEvent,
+    SVGElement: window.SVGElement,
     Text: window.Text,
     ShadowRoot: window.ShadowRoot,
     window,
@@ -60,7 +61,7 @@ class MyComponent extends CustomElement {
             <div id="div" [innerHTML]="this.text"></div>
             <p class="conditional" #if="this.info">My information banner</p>
             <ul>
-                <li #for="let i of this.items" [attr.index]="$index" [innerHTML]="i"></li>
+                <li #for="let item of this.items" [attr.index]="$index" [innerHTML]="item"></li>
             </ul>
             <ol>
                 <li #for="let key in this.object" [attr.value]="$prop" [innerHTML]="key"></li>
@@ -84,6 +85,12 @@ class MyComponent extends CustomElement {
                 <h4 slot="title">My title</h4>
                 <p>My content</p>
             </my-sub-component>
+
+            <svg>
+                <g>
+                    <rect [attr.x]="10" [attr.y]="20" [attr.width]="100" [attr.height]="300"></rect>
+                </g>
+            </svg>
         `;
     }
 
@@ -273,8 +280,8 @@ describe('Custom Element', () => {
         assert.strictEqual(element.el('ul').children[0].innerHTML, String(expected));
         assert.strictEqual(element.el('ul').children[0].getAttribute('index'), String(0));
 
-        [1,2,3,4,5].forEach(i => {
-            element.items.push(i);
+        [1,2,3,4,5].forEach(el => {
+            element.items.push(el);
             assert.strictEqual(element.el('ul').children.length, element.items.length - 1);
             element.update();
             assert.strictEqual(element.el('ul').children.length, element.items.length);
@@ -305,8 +312,8 @@ describe('Custom Element', () => {
             { k: "2", v: "b" },
             { k: "3", v: "c" },
             { k: "4", v: "d" }
-        ].forEach(i => {
-            element.object[i.k] = i.v;
+        ].forEach(el => {
+            element.object[el.k] = el.v;
             assert.strictEqual(element.el('ol').children.length, Object.keys(element.object).length - 1);
             element.update();
             assert.strictEqual(element.el('ol').children.length, Object.keys(element.object).length);
@@ -337,6 +344,24 @@ describe('Custom Element', () => {
 
         assert.notEqual(subElement.children[1].innerHTML, subElement.childParam);
         assert.strictEqual(subElement.children[1].innerHTML, 'My content');
+
+        done();
+    });
+
+    it('should be able to parse SVG elements', done => {
+        const element = window.document.querySelector('my-component');
+        const svgElement = element.el('svg');
+        const gElement = svgElement.querySelector('g');
+        const rectElement = svgElement.querySelector('rect');
+
+        assert.strictEqual(svgElement instanceof SVGElement, true);
+        assert.strictEqual(gElement instanceof SVGElement, true);
+        assert.strictEqual(rectElement instanceof SVGElement, true);
+
+        assert.strictEqual(rectElement.getAttribute('x'), '10');
+        assert.strictEqual(rectElement.getAttribute('y'), '20');
+        assert.strictEqual(rectElement.getAttribute('width'), '100');
+        assert.strictEqual(rectElement.getAttribute('height'), '300');
 
         done();
     });
