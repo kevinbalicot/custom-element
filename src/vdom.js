@@ -120,17 +120,19 @@ function updateCustomEvents(element, vElement, scope, details = {}) {
 
 function updateElement(parent, newNode, oldNode, scope, details = {}, index = 0) {
     if (!oldNode) {
-        if (parent.childNodes[index]) {
+        if (!parent) {
+            console.log('BUG', newNode, scope);
+        } else if (parent.childNodes[index]) {
             parent.replaceChild(createElement(newNode, scope, details), parent.childNodes[index]);
         } else {
             parent.appendChild(createElement(newNode, scope, details));
         }
-    } else if (!newNode) {
+    } else if (!newNode && oldNode.type !== 'text') {
         //parent.removeChild(parent.childNodes[index]);
         parent.replaceChild(document.createTextNode(''), parent.childNodes[index]);
-    } else if (changed(newNode, oldNode)) {
+    } else if (newNode && oldNode && changed(newNode, oldNode)) {
         parent.replaceChild(createElement(newNode, scope, details), parent.childNodes[index]);
-    } else if (newNode.type) {
+    } else if (newNode && newNode.type) {
         if (newNode.type !== 'template' && newNode.type !== 'text') {
             updateCustomEvents(parent.childNodes[index], newNode, scope, details);
             updateCustomAttributes(parent.childNodes[index], newNode, scope, details);
@@ -177,6 +179,7 @@ function createVirtualElement(element, scope = {}, details = {}) {
         _scope: Object.assign({}, details),
         element: null,
         dataset: element.dataset,
+        isSVG: element.tagName === 'svg' || element instanceof SVGElement,
 
         get scope() {
             return this._scope;
@@ -226,9 +229,9 @@ function createVirtualElement(element, scope = {}, details = {}) {
             if (element.attributes[i].name.match(/#for/g)) {
                 const forAttr = element.getAttribute('#for').match(/(?:var|let)\s+(\S+)\s+(?:in|of)\s+(\S+)/);
 
-                const iteration = (el, els) => {
+                const iteration = (el, els, index = 0) => {
                     if (Array.isArray(els)) {
-                        details['$index'] = els.indexOf(el);
+                        details['$index'] = index;
                     } else {
                         details['$prop'] = els[el];
                     }
@@ -241,7 +244,7 @@ function createVirtualElement(element, scope = {}, details = {}) {
                 };
 
                 parseExpression(
-                    'for (' + forAttr[0] + ') { iteration(' + forAttr[1] + ', ' + forAttr[2] + '); }',
+                    'let i=0; for (' + forAttr[0] + ') { iteration(' + forAttr[1] + ', ' + forAttr[2] + ', i++); }',
                     Object.assign({}, details, { iteration }),
                     scope
                 );
@@ -271,6 +274,8 @@ function createElement(vElement, scope, details) {
     let element;
     if (vElement.element) {
         element = vElement.element;
+    } else if (vElement.isSVG) {
+        element = document.createElementNS('http://www.w3.org/2000/svg', vElement.type);
     } else {
         element = document.createElement(vElement.type);
     }
